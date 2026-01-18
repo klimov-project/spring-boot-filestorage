@@ -1,0 +1,13 @@
+ .dockerignore
+.env
+.git
+.vs
+.vscode
+*.*proj.user
+*.dbmdl
+*.jfm
+node_modules
+LICENSE
+README.md
+
+docker-compose.override.yml
