@@ -19,7 +19,7 @@ services:
     container_name: my_redis
     volumes:
       - redis_data:/data
-    command: redis-server --save 60 1 --loglevel warning # Базовая оптимизация для разработки
+    command: redis-server --save 60 1 --loglevel warning
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -33,7 +33,7 @@ services:
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
-      MINIO_DEFAULT_BUCKETS: "user-uploads" # Автоматическое создание бакета при запуске
+      MINIO_DEFAULT_BUCKETS: "user-uploads"
     volumes:
       - minio_data:/data
     healthcheck:
@@ -42,17 +42,21 @@ services:
       timeout: 20s
       retries: 3
 
-  # ЗАГОТОВКА ДЛЯ FRONTEND СЕРВИСА
-  frontend:
-    image: nginx:alpine
-    container_name: my_frontend
-    ports:
-      - "5680:80" #  слева внутренний, справа внешний порт
-    volumes:
-      # Укажите путь к папке со скомпилированными статическими файлами вашего фронтенда
-      # - ./frontend-dist:/usr/share/nginx/html:ro
-      # Для начала можно просто использовать заглушку:
-      - ./frontend-placeholder:/usr/share/nginx/html:ro
+  # БЭКЕНД (Spring Boot)
+  backend:
+    build:
+      context: ./backend-gradle-initializr
+      dockerfile: Dockerfile
+    container_name: my_backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/appdb
+      SPRING_DATASOURCE_USERNAME: appuser
+      SPRING_DATASOURCE_PASSWORD: secretpassword
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
     depends_on:
       postgres:
         condition: service_healthy
@@ -60,7 +64,17 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-    # После запуска фронтенд будет доступен по http://localhost:80
+
+  # ЗАГОТОВКА ДЛЯ FRONTEND СЕРВИСА
+  frontend:
+    image: nginx:alpine
+    container_name: my_frontend
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend-placeholder:/usr/share/nginx/html:ro
+    depends_on:
+      - backend # Фронтенд ждёт запуска бэкенда
 
 volumes:
   postgres_data:

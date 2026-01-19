@@ -4,7 +4,7 @@ spring:
 
   # Настройки PostgreSQL
   datasource:
-    url: jdbc:postgresql://localhost:5432/appdb
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/appdb}
     username: appuser
     password: secretpassword
     driver-class-name: org.postgresql.Driver
@@ -28,7 +28,7 @@ spring:
   # Настройки Redis (для сессий)
   data:
     redis:
-      host: localhost
+      host: ${SPRING_REDIS_HOST:redis}
       port: 6379
       database: 0
       timeout: 2000ms
