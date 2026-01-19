@@ -60,7 +60,7 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-    # После запуска фронтенд будет доступен по http://localhost:5680
+    # После запуска фронтенд будет доступен по http://localhost:80
 
 volumes:
   postgres_data:

@@ -4,7 +4,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -14,7 +13,6 @@ import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
@@ -22,24 +20,30 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.ALWAYS) // Сессии будут создаваться при необходимости
+                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
                 )
                 .authorizeHttpRequests(authz -> authz
                 .requestMatchers(
-                        "/api/auth/**",
-                        "/swagger-ui/**",
-                        "/v3/api-docs/**",
-                        "/error"
+                        "/", // Корневой путь
+                        "/index.html", // Статическая страница
+                        "/swagger-ui.html", // Основная страница Swagger UI
+                        "/swagger-ui/**", // Все ресурсы Swagger UI (CSS, JS)
+                        "/v3/api-docs/**", // OpenAPI спецификация
+                        "/api-docs/**", // Альтернативный путь к API docs
+                        "/webjars/**", // WebJars ресурсы
+                        "/swagger-resources/**", // Ресурсы Swagger
+                        "/configuration/**", // Конфигурация Swagger
+                        "/api/auth/**", // Твои эндпоинты аутентификации
+                        "/error" // Страница ошибок
                 ).permitAll()
                 .anyRequest().authenticated()
-                )
-                .formLogin(form -> form.disable()) // Отключаем форму логина Spring
-                .httpBasic(basic -> basic.disable()); // Отключаем basic auth
+                );
 
         return http.build();
     }
 
     @Bean
+
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
