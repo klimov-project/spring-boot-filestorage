@@ -6,6 +6,7 @@
 *.*proj.user
 *.dbmdl
 *.jfm
+*.zip
 node_modules
 LICENSE
 README.md
