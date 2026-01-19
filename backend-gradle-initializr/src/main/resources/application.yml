@@ -13,14 +13,16 @@ spring:
       minimum-idle: 5
       connection-timeout: 30000
 
-  # Настройки JPA
+    # Настройки JPA
   jpa:
     hibernate:
-      ddl-auto: update # Для разработки. В продакшене использовать миграции
+      ddl-auto: create # Для первого запуска создаст таблицы
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+        jdbc:
+          batch_size: 20
     show-sql: true
 
   # Настройки Redis (для сессий)

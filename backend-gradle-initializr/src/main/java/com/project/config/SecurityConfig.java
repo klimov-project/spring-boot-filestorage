@@ -24,17 +24,15 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(authz -> authz
                 .requestMatchers(
-                        "/", // Корневой путь
-                        "/index.html", // Статическая страница
                         "/swagger-ui.html", // Основная страница Swagger UI
                         "/swagger-ui/**", // Все ресурсы Swagger UI (CSS, JS)
-                        "/v3/api-docs/**", // OpenAPI спецификация
-                        "/api-docs/**", // Альтернативный путь к API docs
+                        "/api-docs/**", // OpenAPI спецификация
                         "/webjars/**", // WebJars ресурсы
-                        "/swagger-resources/**", // Ресурсы Swagger
-                        "/configuration/**", // Конфигурация Swagger
+                        "/swagger-resources/**",
+                        "/swagger-resources",
                         "/api/auth/**", // Твои эндпоинты аутентификации
-                        "/error" // Страница ошибок
+                        "/error", // Страница ошибок
+                        "/favicon.ico"
                 ).permitAll()
                 .anyRequest().authenticated()
                 );
@@ -43,7 +41,6 @@ public class SecurityConfig {
     }
 
     @Bean
-
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
