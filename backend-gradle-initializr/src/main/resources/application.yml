@@ -4,9 +4,9 @@ spring:
 
   # Настройки PostgreSQL
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/appdb}
-    username: appuser
-    password: secretpassword
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/appdb}
+    username: ${SPRING_DATASOURCE_USERNAME:appuser}
+    password: ${SPRING_DATASOURCE_PASSWORD:secretpassword}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -16,23 +16,19 @@ spring:
     # Настройки JPA
   jpa:
     hibernate:
-      ddl-auto: create # Для первого запуска создаст таблицы
+      ddl-auto: update
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
-        jdbc:
-          batch_size: 20
     show-sql: true
 
   # Настройки Redis (для сессий)
   data:
     redis:
-      host: ${SPRING_REDIS_HOST:redis}
-      port: 6379
-      database: 0
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
       timeout: 2000ms
-
   # Настройки сессий
   session:
     store-type: redis
@@ -41,18 +37,21 @@ spring:
       flush-mode: on_save
       cleanup-cron: "0 * * * * *" # Каждую минуту очистка истекших сессий
 
-# Настройки MinIO
-minio:
-  endpoint: http://localhost:9000
-  access-key: minioadmin
-  secret-key: minioadmin
-  bucket: user-uploads # Бакет, который мы создали в docker-compose
+  # Настройки MinIO
+  minio:
+    endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+    access-key: ${MINIO_ACCESS_KEY:minioadmin}
+    secret-key: ${MINIO_SECRET_KEY:minioadmin}
+    bucket: ${MINIO_BUCKET:user-uploads} # Бакет, который мы создали в docker-compose
 
 # Настройки приложения
 app:
-  jwt:
-    secret: your-super-secret-key-change-this-in-production
-    expiration-ms: 86400000 # 24 часа
+  auth:
+    password:
+      min-length: 6
+    username:
+      min-length: 3
+      max-length: 50
 
 # Настройки Swagger/OpenAPI
 springdoc:
@@ -62,11 +61,12 @@ springdoc:
     path: /swagger-ui.html
     operations-sorter: method
     tags-sorter: alpha
-    disable-swagger-default-url: true
 
 # Настройки логирования
 logging:
   level:
-    org.springframework.security: DEBUG
+    com.project: DEBUG
+    org.springframework.security: INFO
     org.springframework.session: INFO
-    com.yourproject: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE

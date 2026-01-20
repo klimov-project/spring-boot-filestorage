@@ -1,0 +1,11 @@
+# Игнорируем всё, кроме необходимого для сборки
+*
+
+# Разрешаем только эти файлы и папки
+!src/
+!gradle/
+!build.gradle
+!settings.gradle
+!gradlew
+!gradlew.bat
+!gradle.properties
