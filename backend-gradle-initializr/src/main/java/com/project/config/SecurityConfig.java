@@ -24,14 +24,20 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(authz -> authz
                 .requestMatchers(
-                        "/swagger-ui.html", // Основная страница Swagger UI
-                        "/swagger-ui/**", // Все ресурсы Swagger UI (CSS, JS)
-                        "/api-docs/**", // OpenAPI спецификация
-                        "/webjars/**", // WebJars ресурсы
+                        "/",                        // Главная страница
+
+                        "/login-simple",            // Простой вход
+                        "/logout-simple",           // Простой выход  
+                        "/api/simple/**",           // Простые API проверки
+
+                        "/swagger-ui.html",         // Основная страница Swagger UI
+                        "/swagger-ui/**",           // Все ресурсы Swagger UI (CSS, JS)
+                        "/api-docs/**",             // OpenAPI спецификация
+                        "/webjars/**",              // WebJars ресурсы
                         "/swagger-resources/**",
                         "/swagger-resources",
-                        "/api/auth/**", // Твои эндпоинты аутентификации
-                        "/error", // Страница ошибок
+                        "/api/auth/**",             // Твои эндпоинты аутентификации
+                        "/error",                   // Страница ошибок
                         "/favicon.ico"
                 ).permitAll()
                 .anyRequest().authenticated()
