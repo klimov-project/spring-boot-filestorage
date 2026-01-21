@@ -10,10 +10,9 @@ import java.util.Collection;
 import java.util.Collections;
 
 @Entity
-@Table(name = "users",
-        uniqueConstraints = {
-            @UniqueConstraint(columnNames = "username")
-        })
+@Table(name = "users", uniqueConstraints = {
+    @UniqueConstraint(columnNames = "username")
+})
 public class User implements UserDetails {
 
     @Id
@@ -26,8 +25,10 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String password;
 
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
     // Конструкторы
@@ -84,12 +85,29 @@ public class User implements UserDetails {
         this.updatedAt = updatedAt;
     }
 
+    // UserDetails методы
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
     }
 
-    @PrePersist
+    // @Override
+    // public boolean isAccountNonExpired() {
+    //     return true;
+    // }
+
+    // public boolean isAccountNonLocked() {
+    //     return true;
+    // }
+
+    // public boolean isCredentialsNonExpired() {
+    //     return true;
+    // }
+
+    // public boolean isEnabled() {
+    //     return true;
+    // }
+
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();

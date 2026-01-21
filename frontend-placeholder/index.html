@@ -195,7 +195,7 @@ docker exec my_redis redis-cli KEYS "spring:session:*"
             // Проверка сессий в Redis (через наш API)
             async function checkRedisSessions() {
                 try {
-                    const response = await fetch('http://mydev.local/api/admin/redis-sessions', {
+                    const response = await fetch('http://mydev.local/api/debug/sessions', {
                         credentials: 'include',
                     });
                     const data = await response.json();
@@ -208,7 +208,7 @@ docker exec my_redis redis-cli KEYS "spring:session:*"
             }
 
             // Проверяем сессию при загрузке страницы
-            checkSession();
+            // checkSession();
         </script>
     </body>
 

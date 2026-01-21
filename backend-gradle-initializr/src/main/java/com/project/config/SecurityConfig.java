@@ -6,17 +6,17 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity
 public class SecurityConfig {
 
     private final UserDetailsService userDetailsService;
@@ -26,34 +26,37 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
+            .exceptionHandling(exception -> exception
+                .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+            )
                 .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
-                .maximumSessions(1) // Одна активная сессия на пользователя
                 )
-                .authorizeHttpRequests(authz -> authz
+                .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/health/**").permitAll()
+                .requestMatchers("/api/debug/**").permitAll()
+                .requestMatchers("/error").permitAll()
+                .requestMatchers("/api/user/**").authenticated()
+                // Swagger
                 .requestMatchers(
-                        "/api/auth/**",
                         "/swagger-ui/**",
                         "/swagger-ui.html",
+                        "/v3/api-docs/**",
                         "/api-docs/**",
-                        "/webjars/**",
-                        "/swagger-resources/**",
-                        "/swagger-resources",
-                        "/error",
-                        "/favicon.ico"
+                        "/webjars/**", // ? 
+                        "/swagger-resources/**", // ? 
+                        "/swagger-resources" // ? 
                 ).permitAll()
-                .requestMatchers("/api/admin/**").hasRole("ADMIN") // Только админы
                 .anyRequest().authenticated()
                 )
-                .formLogin(form -> form.disable())
-                .httpBasic(basic -> basic.disable())
                 .logout(logout -> logout
                 .logoutUrl("/api/auth/sign-out")
                 .logoutSuccessHandler((request, response, authentication) -> {
-                    response.setStatus(204);  // 204 No Content
+                    response.setStatus(204); // 204 No Content
                 })
                 .deleteCookies("JSESSIONID")
                 .invalidateHttpSession(true)
@@ -76,7 +79,7 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration authenticationConfiguration) throws Exception {
-        return authenticationConfiguration.getAuthenticationManager();
+            AuthenticationConfiguration authConfig) throws Exception {
+        return authConfig.getAuthenticationManager();
     }
 }
