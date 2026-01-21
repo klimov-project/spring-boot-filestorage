@@ -60,39 +60,39 @@
         <div class="box">
             <h3>Redis команды для проверки:</h3>
             <pre>
-# Посмотреть все ключи сессий в Redis
-docker exec my_redis redis-cli KEYS "spring:session:*"
+                # Посмотреть все ключи сессий в Redis
+                docker exec my_redis redis-cli KEYS "spring:session:*"
 
-# Посмотреть конкретную сессию (замени YOUR_SESSION_ID)
-docker exec my_redis redis-cli HGETALL "spring:session:sessions:YOUR_SESSION_ID"
+                # Посмотреть конкретную сессию (замени YOUR_SESSION_ID)
+                docker exec my_redis redis-cli HGETALL "spring:session:sessions:YOUR_SESSION_ID"
 
-# Посмотреть сессии с истёкшим TTL
-docker exec my_redis redis-cli KEYS "*" | while read line; do echo "$line: $(redis-cli TTL "$line")"; done
+                # Посмотреть сессии с истёкшим TTL
+                docker exec my_redis redis-cli KEYS "*" | while read line; do echo "$line: $(redis-cli TTL "$line")"; done
         </pre>
         </div>
 
         <div class="box">
             <h3>Тесты curl для API:</h3>
             <pre>
-# Регистрация
-curl -X POST http://localhost:8080/api/auth/sign-up \
-  -H "Content-Type: application/json" \
-  -d '{"username":"test","password":"password123"}' \
-  -c cookies.txt
+                # Регистрация
+                curl -X POST http://localhost:8080/api/auth/sign-up \
+                -H "Content-Type: application/json" \
+                -d '{"username":"test","password":"password123"}' \
+                -c cookies.txt
 
-# Вход
-curl -X POST http://localhost:8080/api/auth/sign-in \
-  -H "Content-Type: application/json" \
-  -d '{"username":"test","password":"password123"}' \
-  -c cookies.txt
+                # Вход
+                curl -X POST http://localhost:8080/api/auth/sign-in \
+                -H "Content-Type: application/json" \
+                -d '{"username":"test","password":"password123"}' \
+                -c cookies.txt
 
-# Проверка сессии (с куками)
-curl -X GET http://localhost:8080/api/user/me \
-  -b cookies.txt
+                # Проверка сессии (с куками)
+                curl -X GET http://localhost:8080/api/user/me \
+                -b cookies.txt
 
-# Выход
-curl -X POST http://localhost:8080/api/auth/sign-out \
-  -b cookies.txt
+                # Выход
+                curl -X POST http://localhost:8080/api/auth/sign-out \
+                -b cookies.txt
         </pre>
         </div>
     </body>
