@@ -22,7 +22,7 @@ COPY src ./src
 RUN ./gradlew clean build -x test --no-daemon
 
 # Этап 2: Запуск (runtime) - оставляем как есть
-FROM openjdk:17-jdk-slim
+FROM openjdk:17.0.1-jdk-slim
 
 # Создаём пользователя для безопасности
 RUN groupadd -r spring && useradd --no-log-init -r -g spring spring

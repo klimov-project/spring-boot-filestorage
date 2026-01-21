@@ -21,10 +21,11 @@ public class OpenApiConfig {
                         .description("API для личного кабинета с авторизацией и файлами"))
                 .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
                 .components(new io.swagger.v3.oas.models.Components()
-                        .addSecuritySchemes("bearerAuth",
-                                new SecurityScheme()
-                                        .type(SecurityScheme.Type.HTTP)
-                                        .scheme("bearer")
-                                        .bearerFormat("JWT")));
+                // .addSecuritySchemes("bearerAuth",
+                //         new SecurityScheme()
+                //                 .type(SecurityScheme.Type.HTTP)
+                //                 .scheme("bearer")
+                //                 .bearerFormat("JWT"))
+                );
     }
 }

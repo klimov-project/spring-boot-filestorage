@@ -53,28 +53,28 @@
             <button onclick="checkRedisSessions()">Показать сессии в Redis</button>
             <pre id="redis-sessions"></pre>
         </div>
-
+ 
         <div class="box">
             <h3>Тесты curl для API:</h3>
             <pre>
 # Регистрация
-curl -X POST http://localhost:8080/api/auth/sign-up \
+curl -X POST http://mydev.local/api/auth/sign-up \
   -H "Content-Type: application/json" \
   -d '{"username":"test","password":"password123"}' \
   -c cookies.txt
 
 # Вход
-curl -X POST http://localhost:8080/api/auth/sign-in \
+curl -X POST http://mydev.local/api/auth/sign-in \
   -H "Content-Type: application/json" \
   -d '{"username":"test","password":"password123"}' \
   -c cookies.txt
 
 # Проверка сессии (с куками)
-curl -X GET http://localhost:8080/api/user/me \
+curl -X GET http://mydev.local/api/user/me \
   -b cookies.txt
 
 # Выход
-curl -X POST http://localhost:8080/api/auth/sign-out \
+curl -X POST http://mydev.local/api/auth/sign-out \
   -b cookies.txt
 
 # Проверка сессий в Redis
@@ -120,7 +120,7 @@ docker exec my_redis redis-cli KEYS "spring:session:*"
                 console.log("username, password");
                 console.log(username, password);
                 try {
-                    const response = await fetch('http://localhost:8080/api/auth/sign-up', {
+                    const response = await fetch('http://mydev.local/api/auth/sign-up', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ username, password }),
@@ -148,7 +148,7 @@ docker exec my_redis redis-cli KEYS "spring:session:*"
                 const password = document.getElementById('login-password').value;
 
                 try {
-                    const response = await fetch('http://localhost:8080/api/auth/sign-in', {
+                    const response = await fetch('http://mydev.local/api/auth/sign-in', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ username, password }),
@@ -173,7 +173,7 @@ docker exec my_redis redis-cli KEYS "spring:session:*"
             // Выход
             async function signout() {
                 try {
-                    const response = await fetch('http://localhost:8080/api/auth/sign-out', {
+                    const response = await fetch('http://mydev.local/api/auth/sign-out', {
                         method: 'POST',
                         credentials: 'include',
                     });
@@ -195,7 +195,7 @@ docker exec my_redis redis-cli KEYS "spring:session:*"
             // Проверка сессий в Redis (через наш API)
             async function checkRedisSessions() {
                 try {
-                    const response = await fetch('http://localhost:8080/api/admin/redis-sessions', {
+                    const response = await fetch('http://mydev.local/api/admin/redis-sessions', {
                         credentials: 'include',
                     });
                     const data = await response.json();
