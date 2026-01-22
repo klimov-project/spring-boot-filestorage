@@ -14,6 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -32,15 +33,16 @@ public class AuthController {
     @PostMapping("/sign-up")
     public ResponseEntity<?> signup(@Valid @RequestBody SignupRequest request, HttpServletRequest httpRequest) {
         try {
+
             // Регистрируем пользователя
             User user = authService.registerUser(request);
 
-                // Автоматически аутентифицируем (создаём сессию)
-                authService.authenticateUser(request.getUsername(), request.getPassword());
+            // Автоматически аутентифицируем (создаём сессию)
+            authService.authenticateUser(request.getUsername(), request.getPassword());
 
-                // Явно сохранить SecurityContext в сессии (для Spring Session/Redis)
-                HttpSession session = httpRequest.getSession(true);
-                session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
+            // Явно сохранить SecurityContext в сессии (для Spring Session/Redis)
+            HttpSession session = httpRequest.getSession(true);
+            session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
                     SecurityContextHolder.getContext());
 
             // Возвращаем ответ 201 Created
@@ -69,26 +71,22 @@ public class AuthController {
     @PostMapping("/sign-in")
     public ResponseEntity<?> signin(@Valid @RequestBody SigninRequest signinRequest, HttpServletRequest httpRequest) {
         try {
-            // Аутентифицируем пользователя (создаём сессию)
+
+            // Аутентификация
             authService.authenticateUser(signinRequest.getUsername(), signinRequest.getPassword());
 
-            // Явно сохранить SecurityContext в сессии (для Spring Session/Redis)
+            // Сохранение сессии
             HttpSession session = httpRequest.getSession(true);
             session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
                     SecurityContextHolder.getContext());
 
-            // Возвращаем ответ 200 OK
-                return ResponseEntity
-                    .ok(new UserResponse(signinRequest.getUsername()));
+            return ResponseEntity.ok(new UserResponse(signinRequest.getUsername()));
 
         } catch (org.springframework.security.authentication.BadCredentialsException e) {
-            // Ошибка 401 если неверные данные
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
                     .body(new ErrorResponse("Неверные данные"));
-
         } catch (Exception e) {
-            // Ошибка 500 для других случаев
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ErrorResponse("Ошибка при авторизации"));

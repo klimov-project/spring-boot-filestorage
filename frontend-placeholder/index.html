@@ -53,34 +53,6 @@
             <button onclick="checkRedisSessions()">Показать сессии в Redis</button>
             <pre id="redis-sessions"></pre>
         </div>
- 
-        <div class="box">
-            <h3>Тесты curl для API:</h3>
-            <pre>
-# Регистрация
-curl -X POST http://mydev.local/api/auth/sign-up \
-  -H "Content-Type: application/json" \
-  -d '{"username":"test","password":"password123"}' \
-  -c cookies.txt
-
-# Вход
-curl -X POST http://mydev.local/api/auth/sign-in \
-  -H "Content-Type: application/json" \
-  -d '{"username":"test","password":"password123"}' \
-  -c cookies.txt
-
-# Проверка сессии (с куками)
-curl -X GET http://mydev.local/api/user/me \
-  -b cookies.txt
-
-# Выход
-curl -X POST http://mydev.local/api/auth/sign-out \
-  -b cookies.txt
-
-# Проверка сессий в Redis
-docker exec my_redis redis-cli KEYS "spring:session:*"
-        </pre>
-        </div>
 
         <script>
             // Функция для проверки текущей сессии
@@ -98,6 +70,7 @@ docker exec my_redis redis-cli KEYS "spring:session:*"
                         <p><strong>Пользователь:</strong> ${user.username}</p>
                         <p><strong>Статус:</strong> ✅ Аутентифицирован</p>
                         <p><strong>Время:</strong> ${new Date().toLocaleTimeString()}</p>
+                        <button onclick="checkSession()">Проверить сессию</button>
                     `;
                         sessionInfo.className = 'box success';
                     } else {
@@ -105,6 +78,7 @@ docker exec my_redis redis-cli KEYS "spring:session:*"
                         <h3>Текущая сессия:</h3>
                         <p><strong>Статус:</strong> ❌ Не аутентифицирован</p>
                         <p><strong>Время:</strong> ${new Date().toLocaleTimeString()}</p>
+                        <button onclick="checkSession()">Проверить сессию</button>
                     `;
                         sessionInfo.className = 'box error';
                     }
@@ -208,7 +182,7 @@ docker exec my_redis redis-cli KEYS "spring:session:*"
             }
 
             // Проверяем сессию при загрузке страницы
-            // checkSession();
+            checkSession();
         </script>
     </body>
 

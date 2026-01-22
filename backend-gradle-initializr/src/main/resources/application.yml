@@ -69,7 +69,7 @@ springdoc:
 logging:
   level:
     com.project: DEBUG
-    org.springframework.security: INFO
+    org.springframework.security: DEBUG
     org.springframework.session: INFO
-    org.hibernate.SQL: DEBUG
+    org.hibernate.SQL: INFO
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE

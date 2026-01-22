@@ -5,6 +5,8 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.io.Serializable;
+
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Collections;
@@ -13,7 +15,7 @@ import java.util.Collections;
 @Table(name = "users", uniqueConstraints = {
     @UniqueConstraint(columnNames = "username")
 })
-public class User implements UserDetails {
+public class User implements UserDetails, Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -96,18 +98,22 @@ public class User implements UserDetails {
     //     return true;
     // }
 
+    // @Override
     // public boolean isAccountNonLocked() {
     //     return true;
     // }
 
+    // @Override
     // public boolean isCredentialsNonExpired() {
     //     return true;
     // }
 
+    // @Override
     // public boolean isEnabled() {
     //     return true;
     // }
 
+    @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();

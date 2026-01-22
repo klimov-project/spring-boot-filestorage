@@ -1,15 +1,17 @@
 package com.project.service;
 
-import com.project.dto.request.SignupRequest;
-import com.project.entity.User;
-import com.project.repository.UserRepository;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.project.dto.request.SignupRequest;
+import com.project.entity.User;
+import com.project.repository.UserRepository;
 
 @Service
 public class AuthService {
@@ -43,13 +45,14 @@ public class AuthService {
     }
 
     public void authenticateUser(String username, String password) {
+        
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(username, password)
             );
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
-        } catch (Exception e) {
+        } catch (AuthenticationException e) {
             throw new RuntimeException("Authentication failed", e);
         }
     }
