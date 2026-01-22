@@ -91,8 +91,6 @@
             async function signup() {
                 const username = document.getElementById('reg-username').value;
                 const password = document.getElementById('reg-password').value;
-                console.log("username, password");
-                console.log(username, password);
                 try {
                     const response = await fetch('http://mydev.local/api/auth/sign-up', {
                         method: 'POST',

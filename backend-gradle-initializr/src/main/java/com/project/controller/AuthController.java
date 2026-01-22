@@ -32,37 +32,21 @@ public class AuthController {
      */
     @PostMapping("/sign-up")
     public ResponseEntity<?> signup(@Valid @RequestBody SignupRequest request, HttpServletRequest httpRequest) {
-        try {
+        // Регистрируем пользователя
+        User user = authService.registerUser(request);
 
-            // Регистрируем пользователя
-            User user = authService.registerUser(request);
+        // Автоматически аутентифицируем (создаём сессию)
+        authService.authenticateUser(request.getUsername(), request.getPassword());
 
-            // Автоматически аутентифицируем (создаём сессию)
-            authService.authenticateUser(request.getUsername(), request.getPassword());
+        // Явно сохранить SecurityContext в сессии (для Spring Session/Redis)
+        HttpSession session = httpRequest.getSession(true);
+        session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
+            SecurityContextHolder.getContext());
 
-            // Явно сохранить SecurityContext в сессии (для Spring Session/Redis)
-            HttpSession session = httpRequest.getSession(true);
-            session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
-                    SecurityContextHolder.getContext());
-
-            // Возвращаем ответ 201 Created
-            return ResponseEntity
-                    .status(HttpStatus.CREATED)
-                    .body(new UserResponse(user.getUsername()));
-
-        } catch (RuntimeException e) {
-            // Ошибка 409 если пользователь уже существует
-            if (e.getMessage().contains("already exists")) {
-                return ResponseEntity
-                        .status(HttpStatus.CONFLICT)
-                        .body(new ErrorResponse("Username занят"));
-            }
-
-            // Ошибка 500 для других случаев
-            return ResponseEntity
-                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ErrorResponse("Ошибка при регистрации"));
-        }
+        // Возвращаем ответ 201 Created
+        return ResponseEntity
+            .status(HttpStatus.CREATED)
+            .body(new UserResponse(user.getUsername()));
     }
 
     /**
@@ -90,33 +74,6 @@ public class AuthController {
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ErrorResponse("Ошибка при авторизации"));
-        }
-    }
-
-    /**
-     * POST /api/auth/sign-out Выход пользователя
-     */
-    @PostMapping("/sign-out")
-    public ResponseEntity<?> signout(HttpServletRequest request) {
-        try {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-            if (auth == null || !auth.isAuthenticated()) {
-                return ResponseEntity
-                        .status(HttpStatus.UNAUTHORIZED)
-                        .body(new ErrorResponse("Пользователь не авторизован"));
-            }
-
-            // Выход обрабатывается Spring Security через SecurityConfig
-            // Просто возвращаем 204 No Content
-            return ResponseEntity
-                    .noContent()
-                    .build();
-
-        } catch (Exception e) {
-            return ResponseEntity
-                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ErrorResponse("Ошибка при выходе"));
         }
     }
 }

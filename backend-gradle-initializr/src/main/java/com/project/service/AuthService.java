@@ -3,7 +3,6 @@ package com.project.service;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -12,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.project.dto.request.SignupRequest;
 import com.project.entity.User;
 import com.project.repository.UserRepository;
+import com.project.exception.UsernameExistsException;
 
 @Service
 public class AuthService {
@@ -33,7 +33,7 @@ public class AuthService {
     public User registerUser(SignupRequest request) {
         // Проверяем, существует ли пользователь
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("Username already exists");
+            throw new UsernameExistsException("Username already exists");
         }
 
         // Создаём нового пользователя
@@ -45,15 +45,10 @@ public class AuthService {
     }
 
     public void authenticateUser(String username, String password) {
-        
-        try {
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(username, password)
-            );
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(username, password)
+        );
 
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-        } catch (AuthenticationException e) {
-            throw new RuntimeException("Authentication failed", e);
-        }
+        SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 }
