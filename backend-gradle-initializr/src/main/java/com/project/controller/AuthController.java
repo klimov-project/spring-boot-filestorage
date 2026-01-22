@@ -10,11 +10,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.authentication.BadCredentialsException;
 import jakarta.servlet.http.HttpSession;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -41,12 +40,12 @@ public class AuthController {
         // Явно сохранить SecurityContext в сессии (для Spring Session/Redis)
         HttpSession session = httpRequest.getSession(true);
         session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
-            SecurityContextHolder.getContext());
+                SecurityContextHolder.getContext());
 
         // Возвращаем ответ 201 Created
         return ResponseEntity
-            .status(HttpStatus.CREATED)
-            .body(new UserResponse(user.getUsername()));
+                .status(HttpStatus.CREATED)
+                .body(new UserResponse(user.getUsername()));
     }
 
     /**
@@ -66,7 +65,7 @@ public class AuthController {
 
             return ResponseEntity.ok(new UserResponse(signinRequest.getUsername()));
 
-        } catch (org.springframework.security.authentication.BadCredentialsException e) {
+        } catch (BadCredentialsException e) {
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
                     .body(new ErrorResponse("Неверные данные"));
