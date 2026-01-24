@@ -86,7 +86,7 @@
                 const username = document.getElementById('reg-username').value;
                 const password = document.getElementById('reg-password').value;
                 try {
-                    const response = await fetch('http://mydev.local/api/auth/sign-up', {
+                    const response = await fetch('/api/auth/sign-up', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ username, password }),
@@ -114,7 +114,7 @@
                 const password = document.getElementById('login-password').value;
 
                 try {
-                    const response = await fetch('http://mydev.local/api/auth/sign-in', {
+                    const response = await fetch('/api/auth/sign-in', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ username, password }),
@@ -139,7 +139,7 @@
             // Выход
             async function signout() {
                 try {
-                    const response = await fetch('http://mydev.local/api/auth/sign-out', {
+                    const response = await fetch('/api/auth/sign-out', {
                         method: 'POST',
                         credentials: 'include',
                     });
@@ -161,7 +161,7 @@
             // Проверка сессий в Redis (через наш API)
             async function checkRedisSessions() {
                 try {
-                    const response = await fetch('http://mydev.local/api/debug/sessions', {
+                    const response = await fetch('/api/debug/sessions', {
                         credentials: 'include',
                     });
                     const data = await response.json();
