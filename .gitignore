@@ -1,5 +1,7 @@
- .dockerignore
+.dockerignore
 .env
+.env.local
+.env.*.local
 .git
 .vs
 .vscode
@@ -12,3 +14,22 @@ LICENSE
 
 docker-compose.override.yml
 docker-compose-var2.override.yml
+docker-compose-var3.override.yml
+
+# Build artifacts
+build/
+dist/
+*.class
+*.jar
+*.war
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes
+postgres_data/
+redis_data/
+minio_data/
