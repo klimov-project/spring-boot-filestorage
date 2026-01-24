@@ -22,10 +22,10 @@
 
 Важные файлы для проверки:
 
-- Контроллеры: [AuthController.java](src/main/java/com/project/controller/AuthController.java#L1-L200)
-- Сервисы: [AuthService.java](src/main/java/com/project/service/AuthService.java#L1-L200)
-- Конфигурация безопасности: [SecurityConfig.java](src/main/java/com/project/config/SecurityConfig.java#L1-L200)
-- Обработчик исключений: [GlobalExceptionHandler.java](src/main/java/com/project/exception/GlobalExceptionHandler.java#L1-L200)
+- Контроллеры: [AuthController.java](backend-gradle-initializr/src/main/java/com/project/controller/AuthController.java#L1-L200)
+- Сервисы: [AuthService.java](backend-gradle-initializr/src/main/java/com/project/service/AuthService.java#L1-L200)
+- Конфигурация безопасности: [SecurityConfig.java](backend-gradle-initializr/src/main/java/com/project/config/SecurityConfig.java#L1-L200)
+- Обработчик исключений: [GlobalExceptionHandler.java](backend-gradle-initializr/src/main/java/com/project/exception/GlobalExceptionHandler.java#L1-L200)
 
 API (реализовано сейчас):
 
@@ -55,6 +55,5 @@ API (реализовано сейчас):
 - Интеграционные тесты для `AuthController` находятся в `src/test/java/com/project/AuthControllerIntegrationTest.java`.
 
 Примечания:
-
-- `DebugController` содержит эндпоинты для вывода метрик сессий Redis — рекомендуется ограничить доступ к этим эндпоинтам или удалить в production.
+ 
 - Logout реализован через Spring Security (`/api/auth/sign-out` настроен в `SecurityConfig`).

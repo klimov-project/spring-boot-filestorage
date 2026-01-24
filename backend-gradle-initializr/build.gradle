@@ -39,10 +39,11 @@ dependencies {
     // Валидация (для регистрации)
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     
-    // Swagger (OpenAPI 3)
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
+    // Swagger (OpenAPI 3) - updated version for Spring Boot 4.x
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.0'
     
-    // MinIO SDK (для S3)
+    // Kotlin reflect (required by Springdoc)
+    implementation 'org.jetbrains.kotlin:kotlin-reflect:1.9.23'
     implementation 'io.minio:minio:8.5.11'
     
     // Утилиты (для работы с JSON и др.)

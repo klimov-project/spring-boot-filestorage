@@ -37,21 +37,17 @@ public class SecurityConfig {
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
                 )
                 .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/health/**").permitAll()
-                .requestMatchers("/api/debug/**").permitAll()
-                .requestMatchers("/error").permitAll()
-                .requestMatchers("/api/user/**").authenticated()
-                // Swagger
                 .requestMatchers(
                         "/swagger-ui/**",
-                        "/swagger-ui.html",
                         "/v3/api-docs/**",
-                        "/api-docs/**",
-                        "/webjars/**", // ? 
-                        "/swagger-resources/**", // ? 
-                        "/swagger-resources" // ? 
+                        "/v3/api-docs",
+                        "/webjars/**",
+                        "/swagger-resources/**",
+                        "/swagger-resources"
                 ).permitAll()
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/health/**").permitAll()
+                .requestMatchers("/api/user/**").authenticated()
                 .anyRequest().authenticated()
                 )
                 .logout(logout -> logout
