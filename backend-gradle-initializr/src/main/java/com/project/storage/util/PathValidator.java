@@ -44,10 +44,6 @@ public class PathValidator {
 
             // Для директории возвращаем тип с учетом слэша
             if (isDirectory) {
-                // Убедимся что после нормализации слэш остался
-                if (!normalizedStr.endsWith("/")) {
-                    normalizedStr = normalizedStr + "/";
-                }
                 return ResourceType.DIRECTORY;
             } else {
                 return ResourceType.FILE;
