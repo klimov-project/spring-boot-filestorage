@@ -9,11 +9,7 @@ public class ResourceInfo {
     private String path; // Путь к родительской папке
     private String name; // Имя ресурса
     private Long size;   // Размер (только для файла)
-    private ResourceType type; // Тип: FILE или DIRECTORY 
-
-    public ResourceInfo() {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
+    private ResourceType type; // Тип: FILE или DIRECTORY  
 
     public ResourceInfo(String path, String name, Long size, ResourceType type) {
         this.path = path;

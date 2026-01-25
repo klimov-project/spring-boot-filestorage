@@ -41,8 +41,8 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleAllExceptions(Exception ex) {
-        // System.out.println("=== ResponseEntity Exception ===");
-        // System.out.println(ex);
+        System.out.println("=== ResponseEntity Exception ===");
+        System.out.println(ex);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponse("Внутренняя ошибка сервера"));

@@ -1,0 +1,88 @@
+@host_api = http://localhost:8080/api
+@username = user_1
+@password = password
+@contentType = application/json
+@temporaryJWT = Bearer <ваш_токен_здесь>
+
+### Проверка работы сервера
+GET {{host_api}}/health
+
+
+### Регистрация нового пользователя
+# @name register
+POST {{host_api}}/auth/sign-up
+Content-Type: {{contentType}}
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+### Вход в систему
+# @name login
+POST {{host_api}}/auth/sign-in
+Content-Type: {{contentType}}
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+### Получение профиля (требуется токен)
+# Предварительно выполните запрос login и скопируйте токен
+GET {{host_api}}/users/me
+Authorization: {{temporaryJWT}}
+Content-Type: {{contentType}}
+
+
+### Выход пользователя (Logout)
+POST {{host_api}}/auth/sign-out
+Authorization: {{temporaryJWT}}
+Content-Type: {{contentType}}
+
+
+### Создание тестовой папки
+POST {{host_api}}/directory?path=test-folder/
+
+### Получение информации о папке
+GET {{host_api}}/resource?path=test-folder/
+
+### Создание вложенной папки
+POST {{host_api}}/directory?path=test-folder/subfolder/
+
+### Получение содержимого папки
+GET {{host_api}}/directory?path=test-folder/
+
+### Удаление папки
+DELETE {{host_api}}/resource?path=test-folder/
+
+
+
+
+### Поиск
+GET {{host_api}}/resource/search?query=test
+
+
+
+
+### Создадим тестовую структуру
+POST {{host_api}}/directory?path=test-download/
+
+### Создадим файл через upload
+POST {{host_api}}/resource?path=test-download/
+Content-Type: multipart/form-data; boundary=boundarys
+
+--boundarys
+Content-Disposition: form-data; name="files"; filename="test.txt"
+
+This is test file content for download.
+--boundarys--
+
+### Скачивание файла
+GET {{host_api}}/resource/download?path=test-download/test.txt
+
+### Скачивание папки как zip
+GET {{host_api}}/resource/download?path=test-download/
+
+### Очистка
+DELETE {{host_api}}/resource?path=test-download/

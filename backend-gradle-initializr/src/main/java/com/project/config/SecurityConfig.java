@@ -30,27 +30,27 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .exceptionHandling(exception -> exception
-                .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
-                )
-                .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
-                )
-                .authorizeHttpRequests(auth -> auth
-                .requestMatchers(
-                        "/swagger-ui.html",
-                        "/swagger-ui/**",
-                        "/v3/api-docs/**",
-                        "/v3/api-docs",
-                        "/webjars/**",
-                        "/swagger-resources/**",
-                        "/swagger-resources"
-                ).permitAll()
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/health/**").permitAll()
-                .requestMatchers("/api/user/**").authenticated()
-                .anyRequest().authenticated()
-                )
+                // .exceptionHandling(exception -> exception
+                // .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+                // )
+                // .sessionManagement(session -> session
+                // .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                // )
+                // .authorizeHttpRequests(auth -> auth
+                // .requestMatchers(
+                //         "/swagger-ui.html",
+                //         "/swagger-ui/**",
+                //         "/v3/api-docs/**",
+                //         "/v3/api-docs",
+                //         "/webjars/**",
+                //         "/swagger-resources/**",
+                //         "/swagger-resources"
+                // ).permitAll()
+                // .requestMatchers("/api/auth/**").permitAll()
+                // .requestMatchers("/api/health/**").permitAll()
+                // .requestMatchers("/api/user/**").authenticated()
+                // .anyRequest().authenticated()
+                // )
                 .logout(logout -> logout
                 .logoutUrl("/api/auth/sign-out")
                 .logoutSuccessHandler((request, response, authentication) -> {

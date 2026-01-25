@@ -49,10 +49,16 @@ spring:
   security:
     enabled: false
 
+  # +++ Дополнительные настройки приложения +++
   servlet:
     multipart:
       max-file-size: 100MB
       max-request-size: 200MB
+      
+  # Настройки для временных файлов
+  resources:
+    cache:
+      period: 0
 
 # Конфигурация хранилища
 storage:
@@ -67,6 +73,8 @@ app:
     username:
       min-length: 3
       max-length: 50
+
+# --- Дополнительные настройки приложения ---
 
 # Настройки Swagger/OpenAPI
 springdoc:
