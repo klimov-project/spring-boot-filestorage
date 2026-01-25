@@ -14,6 +14,11 @@
 Запуск (локально, dev):
 
 1. Поднять зависимости (Postgres, Redis, MinIO) через Docker Compose (файлы `docker-compose*.yml` присутствуют в корне).
+
+```bash
+docker-compose up -d --build postgres redis minio
+```
+
 2. Запустить приложение:
 
 ```bash
@@ -55,5 +60,5 @@ API (реализовано сейчас):
 - Интеграционные тесты для `AuthController` находятся в `src/test/java/com/project/AuthControllerIntegrationTest.java`.
 
 Примечания:
- 
+
 - Logout реализован через Spring Security (`/api/auth/sign-out` настроен в `SecurityConfig`).

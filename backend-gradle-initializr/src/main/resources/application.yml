@@ -29,6 +29,7 @@ spring:
       host: ${SPRING_REDIS_HOST:localhost}
       port: ${SPRING_REDIS_PORT:6379}
       timeout: 2000ms
+
   # Настройки сессий
   session:
     store-type: redis
@@ -43,6 +44,20 @@ spring:
     access-key: ${MINIO_ACCESS_KEY:minioadmin}
     secret-key: ${MINIO_SECRET_KEY:minioadmin}
     bucket: ${MINIO_BUCKET:user-uploads} # Бакет, который мы создали в docker-compose
+    region: ${MINIO_REGION:us-east-1}
+
+  security:
+    enabled: false
+
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 200MB
+
+# Конфигурация хранилища
+storage:
+  root:
+    path: "./user-storage" # Будет создана рядом с проектом
 
 # Настройки приложения
 app:
