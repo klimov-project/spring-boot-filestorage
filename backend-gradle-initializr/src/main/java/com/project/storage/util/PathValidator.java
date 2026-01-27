@@ -24,7 +24,12 @@ public class PathValidator {
 
         String path = rawPath.trim();
 
-        // Путь должен начинаться не с / (относительный путь от корня пользователя)
+        // Если путь равен "/", то это корень пользовательской папки
+        if (path.equals("/")) {
+            return ResourceType.DIRECTORY;
+        }
+
+        // Путь не должен начинаться с / или \ (относительный путь от корня пользователя)
         if (path.startsWith("/") || path.startsWith("\\")) {
             return null;
         }

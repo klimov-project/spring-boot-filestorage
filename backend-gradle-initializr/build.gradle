@@ -51,7 +51,20 @@ dependencies {
     
     // Тестирование
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher' 
+    testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation 'org.mockito:mockito-core'
+    testImplementation 'org.mockito:mockito-junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // H2 для тестов
+    testImplementation 'com.h2database:h2'
+    
+    // Утилиты для тестов
+    testImplementation 'org.assertj:assertj-core'
+
+    // Для интеграционных тестов
+    testImplementation 'org.testcontainers:testcontainers:1.19.0'
+    testImplementation 'org.testcontainers:junit-jupiter:1.19.0'
 }
 
 tasks.named('test') {
