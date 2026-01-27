@@ -106,4 +106,54 @@ public class PathValidator {
             return withoutTrailingSlash.substring(0, lastSeparator + 1);
         }
     }
+
+    /**
+     * Проверяет, что тип ресурса сохранился при переименовании
+     */
+    public boolean isSameResourceType(String fromPath, String toPath) {
+        ResourceType fromType = validateAndGetType(fromPath);
+        ResourceType toType = validateAndGetType(toPath);
+        return fromType != null && toType != null && fromType == toType;
+    }
+
+    /**
+     * Проверяет, является ли перемещение просто переименованием (в той же
+     * директории)
+     */
+    public boolean isRenameOnly(String fromPath, String toPath) {
+        String fromParent = extractParentPath(fromPath);
+        String toParent = extractParentPath(toPath);
+        return fromParent.equals(toParent);
+    }
+
+    /**
+     * Проверяет, является ли перемещение просто сменой пути (то же имя в другой
+     * директории)
+     */
+    public boolean isPathChangeOnly(String fromPath, String toPath) {
+        String fromName = extractName(fromPath);
+        String toName = extractName(toPath);
+        return fromName.equals(toName);
+    }
+
+    /**
+     * Нормализует путь для сравнения
+     */
+    public String normalizePath(String path) {
+        if (!StringUtils.hasText(path)) {
+            return path;
+        }
+        try {
+            Path normalized = Paths.get(path).normalize();
+            String result = normalized.toString();
+
+            // Восстанавливаем завершающий слэш для директорий
+            if (path.endsWith("/") && !result.endsWith("/")) {
+                result = result + "/";
+            }
+            return result;
+        } catch (Exception e) {
+            return path;
+        }
+    }
 }

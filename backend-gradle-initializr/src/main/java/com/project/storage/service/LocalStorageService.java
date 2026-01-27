@@ -108,14 +108,21 @@ public class LocalStorageService implements StorageService {
 
     @Override
     public ResourceInfo moveResource(String fromPath, String toPath)
-            throws ResourceNotFoundException, ResourceAlreadyExistsException {
+            throws ResourceNotFoundException, ResourceAlreadyExistsException, InvalidPathException {
+
         logger.debug("Moving resource: {} -> {}", fromPath, toPath);
 
-        try {
-            validatePath(fromPath);
-            validatePath(toPath);
-        } catch (InvalidPathException ex) {
-            System.getLogger(LocalStorageService.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
+        // Валидация путей
+        validatePath(fromPath);
+        validatePath(toPath);
+
+        // Проверка, что типы ресурсов совпадают
+        if (!pathValidator.isSameResourceType(fromPath, toPath)) {
+            String errorMsg = String.format("Cannot change resource type from %s to %s",
+                    pathValidator.validateAndGetType(fromPath),
+                    pathValidator.validateAndGetType(toPath));
+            logger.warn(errorMsg);
+            throw new InvalidPathException(errorMsg);
         }
 
         Path source = resolveUserPath(fromPath);
@@ -130,24 +137,55 @@ public class LocalStorageService implements StorageService {
             throw new ResourceNotFoundException(errorMsg);
         }
 
+        // Проверяем, не пытаемся ли переместить папку внутрь себя
+        if (Files.isDirectory(source) && target.startsWith(source)) {
+            String errorMsg = String.format("Cannot move directory inside itself: %s -> %s", fromPath, toPath);
+            logger.warn(errorMsg);
+            throw new InvalidPathException(errorMsg);
+        }
+
+        // Проверяем, существует ли целевой путь (409 по ТЗ)
         if (Files.exists(target)) {
             String errorMsg = String.format("Target resource already exists: %s", toPath);
             logger.warn(errorMsg);
             throw new ResourceAlreadyExistsException(errorMsg);
         }
 
+        // Проверяем существование родительской директории для target
+        Path parentDir = target.getParent();
+        if (parentDir != null && !Files.exists(parentDir)) {
+            String errorMsg = String.format("Parent directory does not exist: %s",
+                    pathValidator.extractParentPath(toPath));
+            logger.warn(errorMsg);
+            throw new ResourceNotFoundException(errorMsg);
+        }
+
         try {
             // Создаём родительскую директорию, если нужно
-            Path parentDir = target.getParent();
             if (parentDir != null && !Files.exists(parentDir)) {
                 logger.debug("Creating parent directory: {}", parentDir);
                 Files.createDirectories(parentDir);
             }
 
-            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+            // Перемещаем ресурс
+            Files.move(source, target);
             logger.info("Resource moved successfully: {} -> {}", fromPath, toPath);
 
+            // Определяем тип операции
+            if (pathValidator.isRenameOnly(fromPath, toPath)) {
+                logger.debug("Operation: rename within same directory");
+            } else if (pathValidator.isPathChangeOnly(fromPath, toPath)) {
+                logger.debug("Operation: move to different directory (same name)");
+            } else {
+                logger.debug("Operation: rename and move to different directory");
+            }
+
             return createResourceInfo(toPath, target);
+
+        } catch (AccessDeniedException e) {
+            String errorMsg = String.format("Access denied when moving resource: %s -> %s", fromPath, toPath);
+            logger.error(errorMsg, e);
+            throw new RuntimeException(errorMsg, e);
         } catch (IOException e) {
             String errorMsg = String.format("Failed to move resource from %s to %s", fromPath, toPath);
             logger.error(errorMsg, e);
