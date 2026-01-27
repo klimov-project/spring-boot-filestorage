@@ -1,24 +1,15 @@
-FROM nginx:alpine
+FROM node:22-alpine3.20 as build
+WORKDIR /app
 
-# Устанавливаем необходимые пакеты
-RUN apk add --no-cache git docker-cli docker-compose fcgiwrap
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
 
-# Копируем статику фронтенда
-COPY ./static /usr/share/nginx/html
-
-# Копируем скрипт вебхука
-COPY github-webhook.sh /usr/share/nginx/html/github-webhook.sh
-RUN chmod +x /usr/share/nginx/html/github-webhook.sh
-
-# Копируем конфиг Nginx
+FROM nginx:1.27-alpine
+COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Создаём директорию для сокета fcgiwrap
-RUN mkdir -p /var/run/fcgiwrap
+EXPOSE 80
 
-# Копируем скрипт для запуска fcgiwrap и Nginx
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-# Указываем точку входа
-ENTRYPOINT ["/entrypoint.sh"]
+CMD ["nginx", "-g", "daemon off;"]
