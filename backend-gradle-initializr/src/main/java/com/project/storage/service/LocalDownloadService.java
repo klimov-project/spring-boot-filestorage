@@ -3,7 +3,6 @@ package com.project.storage.service;
 import com.project.storage.util.PathValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
@@ -21,17 +20,17 @@ public class LocalDownloadService implements DownloadService {
     private static final Logger logger = LoggerFactory.getLogger(LocalDownloadService.class);
 
     private final PathValidator pathValidator;
-    private final Path storageRoot;
     private final StorageService storageService;
+    private final PathResolutionService pathResolutionService;
 
     public LocalDownloadService(
             PathValidator pathValidator,
-            @Value("${storage.root.path:./storage}") String storageRootPath,
+            PathResolutionService pathResolutionService,
             StorageService storageService) {
         this.pathValidator = pathValidator;
-        this.storageRoot = Paths.get(storageRootPath).toAbsolutePath().normalize();
+        this.pathResolutionService = pathResolutionService;
         this.storageService = storageService;
-        logger.info("LocalDownloadService initialized with root: {}", storageRoot);
+        logger.info("LocalDownloadService initialized" );
     }
 
     @Override
@@ -51,8 +50,9 @@ public class LocalDownloadService implements DownloadService {
         var resourceInfo = storageService.getResourceInfo(path);
 
         // Разрешаем физический путь
-        Path physicalPath = resolveUserPath(path);
+        Path physicalPath = pathResolutionService.resolveUserPath(path);
 
+        System.out.println(physicalPath);
         if (!Files.exists(physicalPath)) {
             throw new StorageService.ResourceNotFoundException("Resource not found: " + path);
         }
@@ -117,16 +117,5 @@ public class LocalDownloadService implements DownloadService {
                         }
                     });
         }
-    }
-
-    private Path resolveUserPath(String userPath) {
-        Path resolved = storageRoot.resolve(userPath).normalize();
-
-        // Защита от path traversal
-        if (!resolved.startsWith(storageRoot)) {
-            throw new SecurityException("Access denied: path traversal attempt");
-        }
-
-        return resolved;
     }
 }

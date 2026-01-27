@@ -5,7 +5,6 @@ import com.project.storage.model.ResourceType;
 import com.project.storage.util.PathValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,25 +21,13 @@ public class LocalStorageService implements StorageService {
     private static final Logger logger = LoggerFactory.getLogger(LocalStorageService.class);
 
     private final PathValidator pathValidator;
-    private final Path storageRoot;
+    private final PathResolutionService pathResolutionService;
 
     public LocalStorageService(
             PathValidator pathValidator,
-            @Value("${storage.root.path:./storage}") String storageRootPath) {
+            PathResolutionService pathResolutionService) {
         this.pathValidator = pathValidator;
-        this.storageRoot = Paths.get(storageRootPath).toAbsolutePath().normalize();
-
-        logger.info("Initializing LocalStorageService with root: {}", storageRoot);
-
-        // Создаём корневую директорию, если её нет
-        try {
-            Files.createDirectories(this.storageRoot);
-            logger.info("Storage root directory created/verified: {}", this.storageRoot);
-        } catch (IOException e) {
-            String errorMsg = String.format("Failed to create storage directory at %s", storageRoot);
-            logger.error(errorMsg, e);
-            throw new RuntimeException(errorMsg, e);
-        }
+        this.pathResolutionService = pathResolutionService;
     }
 
     @Override
@@ -50,10 +37,10 @@ public class LocalStorageService implements StorageService {
         try {
             validatePath(path);
         } catch (InvalidPathException ex) {
-            System.getLogger(LocalStorageService.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
+            logger.error("Invalid path: {}", path, ex);
         }
 
-        Path resourcePath = resolveUserPath(path);
+        Path resourcePath = pathResolutionService.resolveUserPath(path);
         logger.debug("Resolved physical path: {}", resourcePath);
 
         if (!Files.exists(resourcePath)) {
@@ -69,40 +56,6 @@ public class LocalStorageService implements StorageService {
         } catch (Exception e) {
             logger.error("Error creating resource info for path: {}", path, e);
             throw new RuntimeException("Failed to get resource info: " + e.getMessage(), e);
-        }
-    }
-
-    @Override
-    public void deleteResource(String path) throws ResourceNotFoundException {
-        logger.debug("Deleting resource: {}", path);
-        try {
-            validatePath(path);
-        } catch (InvalidPathException ex) {
-            System.getLogger(LocalStorageService.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
-        }
-
-        Path resourcePath = resolveUserPath(path);
-        logger.debug("Resolved physical path for deletion: {}", resourcePath);
-
-        if (!Files.exists(resourcePath)) {
-            String errorMsg = String.format("Resource not found for deletion: %s", path);
-            logger.warn(errorMsg);
-            throw new ResourceNotFoundException(errorMsg);
-        }
-
-        try {
-            if (Files.isDirectory(resourcePath)) {
-                logger.debug("Deleting directory recursively: {}", resourcePath);
-                deleteDirectoryRecursively(resourcePath);
-            } else {
-                logger.debug("Deleting file: {}", resourcePath);
-                Files.delete(resourcePath);
-            }
-            logger.info("Resource deleted successfully: {}", path);
-        } catch (IOException e) {
-            String errorMsg = String.format("Failed to delete resource: %s", path);
-            logger.error(errorMsg, e);
-            throw new RuntimeException(errorMsg, e);
         }
     }
 
@@ -125,8 +78,8 @@ public class LocalStorageService implements StorageService {
             throw new InvalidPathException(errorMsg);
         }
 
-        Path source = resolveUserPath(fromPath);
-        Path target = resolveUserPath(toPath);
+        Path source = pathResolutionService.resolveUserPath(fromPath);
+        Path target = pathResolutionService.resolveUserPath(toPath);
 
         logger.debug("Source physical path: {}", source);
         logger.debug("Target physical path: {}", target);
@@ -194,6 +147,42 @@ public class LocalStorageService implements StorageService {
     }
 
     @Override
+    public void deleteResource(String path) throws ResourceNotFoundException {
+        logger.debug("Deleting resource: {}", path);
+
+        try {
+            validatePath(path);
+        } catch (InvalidPathException ex) {
+            logger.error("Invalid path: {}", path, ex);
+            throw new ResourceNotFoundException("Invalid path: " + path);
+        }
+
+        Path resourcePath = pathResolutionService.resolveUserPath(path);
+        logger.debug("Resolved physical path: {}", resourcePath);
+
+        if (!Files.exists(resourcePath)) {
+            String errorMsg = String.format("Resource not found: %s", path);
+            logger.warn(errorMsg);
+            throw new ResourceNotFoundException(errorMsg);
+        }
+
+        try {
+            if (Files.isDirectory(resourcePath)) {
+                logger.debug("Deleting directory: {}", resourcePath);
+                deleteDirectoryRecursively(resourcePath);
+            } else {
+                logger.debug("Deleting file: {}", resourcePath);
+                Files.delete(resourcePath);
+            }
+            logger.info("Resource deleted successfully: {}", path);
+        } catch (IOException e) {
+            String errorMsg = String.format("Failed to delete resource: %s", path);
+            logger.error(errorMsg, e);
+            throw new RuntimeException(errorMsg, e);
+        }
+    }
+
+    @Override
     public List<ResourceInfo> searchResources(String query) {
         logger.debug("Searching resources with query: {}", query);
 
@@ -204,6 +193,7 @@ public class LocalStorageService implements StorageService {
 
         String searchTerm = query.trim().toLowerCase();
         List<ResourceInfo> results = new ArrayList<>();
+        Path storageRoot = pathResolutionService.getStorageRoot();
 
         try (Stream<Path> walk = Files.walk(storageRoot)) {
             walk.forEach(path -> {
@@ -235,7 +225,7 @@ public class LocalStorageService implements StorageService {
         logger.debug("Uploading {} files to destination: {}", files.length, destinationPath);
         validatePath(destinationPath);
 
-        Path destDir = resolveUserPath(destinationPath);
+        Path destDir = pathResolutionService.resolveUserPath(destinationPath);
         logger.debug("Resolved destination directory: {}", destDir);
 
         if (!Files.isDirectory(destDir)) {
@@ -274,6 +264,7 @@ public class LocalStorageService implements StorageService {
                 logger.debug("File transferred successfully");
 
                 // Создаём информацию о загруженном файле
+                Path storageRoot = pathResolutionService.getStorageRoot();
                 String relativePath = storageRoot.relativize(targetPath).toString();
                 ResourceInfo info = createResourceInfo(relativePath, targetPath);
                 uploadedFiles.add(info);
@@ -299,7 +290,7 @@ public class LocalStorageService implements StorageService {
             System.getLogger(LocalStorageService.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
         }
 
-        Path dirPath = resolveUserPath(path);
+        Path dirPath = pathResolutionService.resolveUserPath(path);
         logger.debug("Resolved directory path: {}", dirPath);
 
         if (!Files.exists(dirPath)) {
@@ -316,6 +307,7 @@ public class LocalStorageService implements StorageService {
 
         try (Stream<Path> list = Files.list(dirPath)) {
             List<ResourceInfo> contents = list.map(p -> {
+                Path storageRoot = pathResolutionService.getStorageRoot();
                 String relativePath = storageRoot.relativize(p).toString();
                 // Добавляем / для директорий
                 if (Files.isDirectory(p)) {
@@ -342,7 +334,7 @@ public class LocalStorageService implements StorageService {
         } catch (InvalidPathException ex) {
             System.getLogger(LocalStorageService.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
         }
-        Path dirPath = resolveUserPath(path);
+        Path dirPath = pathResolutionService.resolveUserPath(path);
         logger.debug("Resolved directory path: {}", dirPath);
 
         if (Files.exists(dirPath)) {
@@ -399,22 +391,6 @@ public class LocalStorageService implements StorageService {
         }
 
         logger.debug("Path validation passed, type: {}", type);
-    }
-
-    private Path resolveUserPath(String userPath) {
-        logger.debug("Resolving user path: {}", userPath);
-        Path resolved = storageRoot.resolve(userPath).normalize();
-
-        // Защита от path traversal за пределы storageRoot
-        if (!resolved.startsWith(storageRoot)) {
-            String errorMsg = String.format("Access denied: path traversal attempt. User path: %s, Resolved: %s",
-                    userPath, resolved);
-            logger.warn(errorMsg);
-            throw new SecurityException(errorMsg);
-        }
-
-        logger.debug("Resolved to physical path: {}", resolved);
-        return resolved;
     }
 
     private ResourceInfo createResourceInfo(String userPath, Path physicalPath) {

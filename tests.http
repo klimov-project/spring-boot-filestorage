@@ -1,0 +1,183 @@
+@host_api = http://localhost:8080/api
+@username = user_1
+@password = password
+@contentType = application/json
+@temporaryJWT = Bearer <ваш_токен_здесь>
+
+### Проверка работы сервера
+GET {{host_api}}/health
+
+
+### Регистрация нового пользователя
+# @name register
+POST {{host_api}}/auth/sign-up
+Content-Type: {{contentType}}
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+### Вход в систему
+# @name login
+POST {{host_api}}/auth/sign-in
+Content-Type: {{contentType}}
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+### Получение профиля (требуется токен)
+# Предварительно выполните запрос login и скопируйте токен
+GET {{host_api}}/user/me 
+Content-Type: {{contentType}}
+
+
+### Выход пользователя (Logout)
+POST {{host_api}}/auth/sign-out 
+Content-Type: {{contentType}}
+
+
+
+
+### Создание тестовой папки1 "test-folder"
+POST {{host_api}}/directory?path=test-folder/
+
+### Создание вложенной папки1 "test-folder/subfolder"
+POST {{host_api}}/directory?path=test-folder/subfolder/
+
+### Получение содержимого папки1
+GET {{host_api}}/directory?path=test-folder/
+
+### Создание тестовой папки2 "test-download"
+POST {{host_api}}/directory?path=test-download/
+
+### Создадим файл в корне
+POST {{host_api}}/resource?path=/
+Content-Type: multipart/form-data; boundary=boundarys
+
+--boundarys
+Content-Disposition: form-data; name="files"; filename="root-file.txt"
+
+This is test root-file.
+--boundarys--
+
+
+
+
+### Поиск
+GET {{host_api}}/resource/search?query=test
+
+
+
+
+### Получение информации о папке
+GET {{host_api}}/resource?path=test-folder/
+
+### Создадим файл в существующей папке "test-download"
+POST {{host_api}}/resource?path=test-download/
+Content-Type: multipart/form-data; boundary=boundarys
+
+--boundarys
+Content-Disposition: form-data; name="files"; filename="test.txt"
+
+This is test file content for download.
+--boundarys--
+
+### Скачивание файла из папки "test-download"
+GET {{host_api}}/resource/download?path=test-download/test.txt
+
+
+### Скачивание файла из корня
+GET {{host_api}}/resource/download?path=root-file.txt
+
+### Скачивание папки как zip
+GET {{host_api}}/resource/download?path=test-download/
+
+### Удаление 1
+DELETE {{host_api}}/resource?path=test-folder/
+
+### Удаление 2
+DELETE {{host_api}}/resource?path=test-download/
+
+### Удаление 3 файла из корня
+DELETE {{host_api}}/resource?path=root-file.txt
+
+
+
+######  Тестирование перемещения файлов
+### 1. Создаем тестовую структуру
+POST {{host_api}}/directory?path=test-move-files/
+Accept: application/json
+
+### 2. Создаем подпапку
+POST {{host_api}}/directory?path=test-move-files/source/
+Accept: application/json
+
+### 3. Загружаем тестовый файл
+POST {{host_api}}/resource?path=test-move-files/source/
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="files"; filename="test-file.txt"
+
+This is a test file for move operation.
+--boundary--
+
+### 4. Проверяем что файл создался
+GET {{host_api}}/resource?path=test-move-files/source/test-file.txt
+Accept: application/json
+
+### 5. ТЕСТ 1: Переименование файла (rename only)
+GET {{host_api}}/resource/move?from=test-move-files/source/test-file.txt&to=test-move-files/source/renamed-file.txt
+Accept: application/json
+
+### 6. Проверяем переименование
+GET {{host_api}}/directory?path=test-move-files/source/
+Accept: application/json
+
+### 7. Создаем целевую папку
+POST {{host_api}}/directory?path=test-move-files/destination/
+Accept: application/json
+
+### 8. ТЕСТ 2: Перемещение файла (move + rename)
+GET {{host_api}}/resource/move?from=test-move-files/source/renamed-file.txt&to=test-move-files/destination/moved-file.txt
+Accept: application/json
+
+### 9. Проверяем обе папки
+GET {{host_api}}/directory?path=test-move-files/source/
+Accept: application/json
+
+GET {{host_api}}/directory?path=test-move-files/destination/
+Accept: application/json
+
+### 10. ТЕСТ 3: Ошибка 409 - файл уже существует
+POST {{host_api}}/resource?path=test-move-files/destination/
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="files"; filename="existing.txt"
+
+This file already exists.
+--boundary--
+
+GET {{host_api}}/resource/move?from=test-move-files/destination/moved-file.txt&to=test-move-files/destination/existing.txt
+Accept: application/json
+
+### 11. ТЕСТ 4: Перемещение директории
+POST {{host_api}}/directory?path=test-move-folders/
+Accept: application/json
+
+POST {{host_api}}/directory?path=test-move-folders/original/
+Accept: application/json
+
+GET {{host_api}}/resource/move?from=test-move-folders/original/&to=test-move-folders/moved/
+Accept: application/json
+
+### 12. Очистка
+DELETE {{host_api}}/resource?path=test-move-files/
+Accept: application/json
+
+DELETE {{host_api}}/resource?path=test-move-folders/
+Accept: application/json

@@ -90,6 +90,7 @@ springdoc:
 logging:
   level:
     com.project: DEBUG
+    com.project.storage: TRACE 
     org.springframework.security: DEBUG
     org.springframework.session: INFO
     org.hibernate.SQL: INFO
