@@ -1,6 +1,6 @@
-import {API_DIRECTORY} from "../../../../UrlConstants.jsx";
-import {throwSpecifyException} from "../../../../exception/ThrowSpecifyException.jsx";
-import {mapToFrontFormat} from "../../../util/FormatMapper.js";
+import { API_DIRECTORY } from "../../../../UrlConstants.jsx";
+import { throwSpecifyException } from "../../../../exception/ThrowSpecifyException.jsx";
+import { mapToFrontFormat } from "../../../util/FormatMapper.js";
 
 
 export const sendGetFolderContent = async (folderName = "") => {
@@ -36,9 +36,9 @@ export const sendGetFolderContent = async (folderName = "") => {
         return mockedResponse.map(ob => mapToFrontFormat(ob));
     }
 
-    console.log("ЗАпрос на содержимое папки: " + folderName);
+    console.log("Запрос на содержимое папки: " + folderName);
 
-    const params = new URLSearchParams({path: folderName});
+    const params = new URLSearchParams({ path: folderName });
 
     const url = `${API_DIRECTORY}?${params.toString()}`;
 
