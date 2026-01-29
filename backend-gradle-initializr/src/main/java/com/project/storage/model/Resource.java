@@ -1,4 +1,3 @@
-// File: src/main/java/com/project/storage/model/Resource.java
 package com.project.storage.model;
 
 import jakarta.persistence.*;

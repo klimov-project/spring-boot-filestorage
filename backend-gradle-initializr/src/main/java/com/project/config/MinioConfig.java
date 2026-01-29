@@ -1,26 +1,36 @@
 package com.project.config;
 
 import io.minio.MinioClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class MinioConfig {
-    
+
+    @Value("${spring.minio.url}")
+    private String url;
+
+    @Value("${spring.minio.port}")
+    private int port;
+
+    @Value("${spring.minio.access-key}")
+    private String accessKey;
+
+    @Value("${spring.minio.secret-key}")
+    private String secretKey;
+
     @Bean
-    public MinioClient minioClient() {
+    public MinioClient getMinioClient() {
         System.out.println("=== MinIO Config: Creating client ===");
-        try {
-            // Жёстко закодированные значения для теста
-            MinioClient client = MinioClient.builder()
-                    .endpoint("http://localhost:9000")
-                    .credentials("minioadmin", "minioadmin")
-                    .build();
-            System.out.println("=== MinIO Client created successfully ===");
-            return client;
-        } catch (Exception e) {
-            System.out.println("=== ERROR creating MinIO client: " + e.getMessage());
-            throw new RuntimeException("MinIO initialization failed", e);
-        }
+        System.out.println("MinIO Endpoint: " + url);
+        System.out.println("MinIO Access Key: " + accessKey);
+        MinioClient client = MinioClient.builder()
+                .endpoint(url, port, false)
+                .credentials(accessKey, secretKey)
+                .build();
+        System.out.println("=== MinIO Client created successfully ===");
+        return client;
     }
+
 }

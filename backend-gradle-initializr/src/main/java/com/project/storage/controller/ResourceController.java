@@ -1,5 +1,8 @@
 package com.project.storage.controller;
 
+import com.project.entity.MinioObject;
+import com.project.service.MinioService;
+
 import com.project.storage.dto.ResourceInfo;
 import com.project.storage.service.StorageService;
 import com.project.storage.service.DownloadService;
@@ -26,13 +29,16 @@ public class ResourceController {
     private static final Logger logger = LoggerFactory.getLogger(ResourceController.class);
 
     private final StorageService storageService;
+    private final MinioService minioService;
     private final PathValidator pathValidator;
     private final DownloadService downloadService;
 
     public ResourceController(
+            MinioService minioService,
             StorageService storageService,
             PathValidator pathValidator,
             DownloadService downloadService) {
+        this.minioService = minioService;
         this.storageService = storageService;
         this.pathValidator = pathValidator;
         this.downloadService = downloadService;
@@ -179,17 +185,14 @@ public class ResourceController {
         try {
             validatePath(path);
             logger.debug("Path validation passed for: {}", path);
-            List<ResourceInfo> contents = storageService.getDirectoryContents(path);
-            logger.info("Retrieved {} items from directory: {}", contents.size(), path);
+
+            // Получаем список объектов из MinIO
+            List<MinioObject> contents = minioService.listObjects(path);
+            logger.info("Retrieved {} items from MinIO directory: {}", contents.size(), path);
+
             return ResponseEntity.ok(contents);
-        } catch (StorageService.InvalidPathException e) {
-            logger.warn("Invalid path: {} - {}", path, e.getMessage());
-            return ResponseEntity.badRequest().body("Invalid path: " + e.getMessage());
-        } catch (StorageService.ResourceNotFoundException e) {
-            logger.warn("Directory not found: {} - {}", path, e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         } catch (Exception e) {
-            logger.error("Error getting directory contents for path: {}", path, e);
+            logger.error("Error getting directory contents from MinIO for path: {}", path, e);
             return ResponseEntity.internalServerError()
                     .body("Unknown error getting directory contents: " + e.getMessage());
         }
