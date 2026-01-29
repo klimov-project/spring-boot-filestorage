@@ -45,6 +45,10 @@ dependencies {
     // Kotlin reflect (required by Springdoc)
     implementation 'org.jetbrains.kotlin:kotlin-reflect:1.9.23'
     implementation 'io.minio:minio:8.5.11'
+
+    // Lombok
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
     
     // Утилиты (для работы с JSON и др.)
     implementation 'com.fasterxml.jackson.core:jackson-databind'

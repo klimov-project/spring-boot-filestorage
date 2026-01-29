@@ -1,4 +1,3 @@
-// File: src/main/java/com/project/storage/dto/ResourceResponse.java
 package com.project.storage.dto;
 
 import com.project.storage.model.ResourceType;
