@@ -13,7 +13,7 @@ spring:
       minimum-idle: 5
       connection-timeout: 30000
 
-    # Настройки JPA
+  # Настройки JPA
   jpa:
     hibernate:
       ddl-auto: update
@@ -40,16 +40,17 @@ spring:
 
   # Настройки MinIO
   minio:
-    url: http://minio:9000
-    bucket: user-uploads 
-    access-key: minioadmin
-    secret-key: minioadmin
-    port: 9000
+    url: http://minio
+    port: ${MINIO_PORT:9000}
+    bucket: ${MINIO_DEFAULT_BUCKETS:user-uploads}
+    access-key: ${MINIO_ROOT_USER:minioadmin}
+    secret-key: ${MINIO_ROOT_PASSWORD:minioadmin}
 
   security:
     enabled: false
 
-      # +++ Дополнительные настройки приложения +++
+# +++ Дополнительные настройки приложения +++
+
   servlet:
     multipart:
       max-file-size: 100MB
@@ -64,6 +65,7 @@ spring:
 storage:
   root:
     path: "./user-storage" # Будет создана рядом с проектом
+
 # Настройки приложения
 app:
   auth:
