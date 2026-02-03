@@ -1,53 +1,56 @@
 package com.project.storage.dto;
 
 import com.project.storage.model.ResourceType;
-import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@JsonInclude(JsonInclude.Include.NON_NULL) // Поле size будет исключено, если null
+import java.time.Instant;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ResourceInfo {
-
-    private String path; // Путь к родительской папке
-    private String name; // Имя ресурса
-    private Long size;   // Размер (только для файла)
-    private ResourceType type; // Тип: FILE или DIRECTORY  
-
-    public ResourceInfo(String path, String name, Long size, ResourceType type) {
-        this.path = path;
-        this.name = name;
-        this.size = size;
-        this.type = type;
-    }
-
-    // Геттеры и сеттеры
-    public String getPath() {
-        return path;
-    }
-
-    public void setPath(String path) {
-        this.path = path;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public Long getSize() {
-        return size;
-    }
-
-    public void setSize(Long size) {
-        this.size = size;
-    }
-
-    public ResourceType getType() {
-        return type;
-    }
-
-    public void setType(ResourceType type) {
-        this.type = type;
-    }
+    
+    /**
+     * Относительный путь (без префикса user-{id}-files)
+     */
+    private String path;
+    
+    /**
+     * Имя ресурса
+     */
+    private String name;
+    
+    /**
+     * Размер (только для файла, null для папок)
+     */
+    private Long size;
+    
+    /**
+     * Тип: FILE или DIRECTORY
+     */
+    private ResourceType type;
+    
+    /**
+     * ID пользователя-владельца
+     */
+    private Long userId;
+    
+    /**
+     * Дата последнего изменения
+     */
+    private Instant lastModified;
+    
+    /**
+     * URL для скачивания (генерируется при необходимости)
+     */
+    private String downloadUrl;
+    
+    /**
+     * MIME тип файла
+     */
+    private String contentType;
 }

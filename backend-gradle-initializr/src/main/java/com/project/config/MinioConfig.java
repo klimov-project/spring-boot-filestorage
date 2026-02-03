@@ -2,28 +2,21 @@ package com.project.config;
 
 import io.minio.*;
 import io.minio.errors.*;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.Data;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+@Data
 @Configuration
+@ConfigurationProperties(prefix = "minio")
 public class MinioConfig {
 
-    @Value("${spring.minio.url}")
     private String url;
-
-    @Value("${spring.minio.port}")
     private int port;
-
-    @Value("${spring.minio.access-key}")
     private String accessKey;
-
-    @Value("${spring.minio.secret-key}")
     private String secretKey;
-
-    @Value("${spring.minio.bucket}")
     private String bucket;
-
     private String endpoint;
 
     @Bean
@@ -39,11 +32,11 @@ public class MinioConfig {
                 .credentials(accessKey, secretKey)
                 .build();
 
-        // // Проверяем и создаём бакет после инициализации клиента
+        // Проверяем и создаём бакет после инициализации клиента
         initBucket(client);
 
         System.out.println("=== MinIO Client created successfully ===");
-        
+
         return client;
     }
 

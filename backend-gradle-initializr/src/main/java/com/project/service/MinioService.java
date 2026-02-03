@@ -2,22 +2,36 @@ package com.project.service;
 
 import com.project.entity.MinioObject;
 import org.springframework.web.multipart.MultipartFile;
+
 import java.util.List;
-import java.util.Map;
 
 public interface MinioService {
 
-    List<MinioObject> listObjects(String userFolder);
+    List<MinioObject> listObjects(String fullPath);
 
-    void deleteObject(String path);
+    void deleteObject(String fullPath);
 
-    void renameObject(String fromPath, String toPath);
+    void renameObject(String oldFullPath, String newFullPath);
 
-    List<MinioObject> searchFiles(String query);
+    List<MinioObject> searchFiles(String userFolder, String query);
 
-    List<MinioObject> uploadFiles(String destinationPath, MultipartFile[] files);
+    List<MinioObject> uploadFiles(String destinationFullPath, MultipartFile[] files);
 
-    void createFolder(String path);
+    void createFolder(String fullPath);
 
-    String getBucketName();
+    // Дополнительные методы
+    /**
+     * Получение URL для скачивания файла
+     */
+    String getDownloadUrl(String fullPath);
+
+    /**
+     * Проверка существования объекта
+     */
+    boolean objectExists(String fullPath);
+
+    /**
+     * Получение информации об объекте
+     */
+    MinioObject getObjectInfo(String fullPath);
 }

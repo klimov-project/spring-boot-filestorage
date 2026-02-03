@@ -46,22 +46,23 @@ public class AuthService {
 
         // Создаём нового пользователя
         User user = new User();
+        user.setUsername(request.getUsername());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user = userRepository.save(user);
+        logger.info("User {} saved to database with ID: {}", request.getUsername(), user.getId());
 
         // Создаём корневую папку для пользователя в MinIO
         String userRootFolder = "user-" + user.getId() + "-files/";
 
-        logger.info("userRootFolder: {}", userRootFolder);
+        logger.info("Attempting to create root user folder: {}", userRootFolder);
         try {
-            storageService.createDirectory(userRootFolder);
+            storageService.createUserDirectory(user.getId());
         } catch (Exception e) {
             // Если не удалось создать папку, выбрасываем исключение для отката транзакции
             throw new RuntimeException("Failed to create user directory in MinIO", e);
         }
 
-        user.setUsername(request.getUsername());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user = userRepository.save(user);
-        logger.info("User {} saved to database with ID: {}", request.getUsername(), user.getId());
+        logger.info("User folder in MinIO created: {}", userRootFolder);
 
         return user;
     }

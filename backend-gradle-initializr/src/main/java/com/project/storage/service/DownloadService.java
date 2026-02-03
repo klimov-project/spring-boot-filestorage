@@ -9,8 +9,17 @@ public interface DownloadService {
     /**
      * Получение ресурса для скачивания
      */
-    DownloadResult getDownloadResource(String path)
-            throws StorageService.ResourceNotFoundException, StorageService.InvalidPathException, IOException;
+    DownloadResult getDownloadResource(Long userId, String path)
+            throws StorageService.ResourceNotFoundException,
+            StorageService.InvalidPathException,
+            IOException;
+
+    /**
+     * Получение прямой ссылки для скачивания (опционально)
+     */
+    default String getDirectDownloadUrl(Long userId, String path) {
+        throw new UnsupportedOperationException("Direct download URLs not supported");
+    }
 
     /**
      * Результат скачивания

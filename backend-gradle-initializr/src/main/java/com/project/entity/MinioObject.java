@@ -1,5 +1,7 @@
 package com.project.entity;
 
+import java.time.Instant;
+
 import lombok.*;
 
 @Getter
@@ -12,6 +14,7 @@ public class MinioObject {
 
     private String name;
     private String path;
-    private Long size;  // Long, чтобы можно было передавать null для папок
+    private Long size;
     private boolean isDirectory;
+    private Instant lastModified;
 }
