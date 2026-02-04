@@ -7,6 +7,8 @@ import java.util.List;
 
 public interface MinioService {
 
+    String getBucketName();
+
     List<MinioObject> listObjects(String fullPath);
 
     void deleteObject(String fullPath);
@@ -19,19 +21,10 @@ public interface MinioService {
 
     void createFolder(String fullPath);
 
-    // Дополнительные методы
-    /**
-     * Получение URL для скачивания файла
-     */
     String getDownloadUrl(String fullPath);
 
-    /**
-     * Проверка существования объекта
-     */
     boolean objectExists(String fullPath);
 
-    /**
-     * Получение информации об объекте
-     */
     MinioObject getObjectInfo(String fullPath);
+
 }

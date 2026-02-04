@@ -20,13 +20,19 @@ public class MinioStorageService implements StorageService {
     }
 
     /**
-     * Получение полного пути в MinIO для пользователя
+     * Создание корневой директории пользователя
+     *
+     * @Override
      */
-    public ResourceInfo createUserDirectory(Long userId)
-            throws ResourceAlreadyExistsException {
-
+    @Override
+    public void createUserDirectory(Long userId) {
         String userRootFolder = "user-" + userId + "-files/";
-        minioService.createFolder(userRootFolder);
+        try {
+            minioService.createFolder(userRootFolder);
+        } catch (Exception e) {
+            // Преобразуем исключение MinIO в наше
+            throw new RuntimeException("Failed to create user directory", e);
+        }
     }
 
     /**

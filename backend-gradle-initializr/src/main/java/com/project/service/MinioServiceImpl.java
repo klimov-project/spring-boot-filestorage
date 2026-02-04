@@ -4,7 +4,7 @@ import com.project.entity.MinioObject;
 import io.minio.*;
 import io.minio.errors.ErrorResponseException;
 import io.minio.messages.Item;
-import io.minio.http.Method; 
+import io.minio.http.Method;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -263,6 +263,11 @@ public class MinioServiceImpl implements MinioService {
             logger.error("Error getting object info for {}: {}", fullPath, e.getMessage());
             throw new RuntimeException("Failed to get object info: " + e.getMessage(), e);
         }
+    }
+
+    @Override
+    public String getBucketName() {
+        return bucket;
     }
 
     /**

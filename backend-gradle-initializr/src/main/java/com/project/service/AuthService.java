@@ -37,7 +37,7 @@ public class AuthService {
         this.storageService = storageService;
     }
 
-    @Transactional(rollbackFor = Exception.class) // Откат при любых исключениях
+    @Transactional(rollbackFor = Exception.class)
     public User registerUser(SignupRequest request) {
         // Проверяем, существует ли пользователь
         if (userRepository.existsByUsername(request.getUsername())) {
@@ -52,18 +52,18 @@ public class AuthService {
         logger.info("User {} saved to database with ID: {}", request.getUsername(), user.getId());
 
         // Создаём корневую папку для пользователя в MinIO
-        String userRootFolder = "user-" + user.getId() + "-files/";
+        logger.info("Attempting to create root user folder for user ID: {}", user.getId());
 
-        logger.info("Attempting to create root user folder: {}", userRootFolder);
         try {
             storageService.createUserDirectory(user.getId());
         } catch (Exception e) {
+            logger.error("Failed to create user directory in MinIO for user {}: {}",
+                    user.getId(), e.getMessage(), e);
             // Если не удалось создать папку, выбрасываем исключение для отката транзакции
             throw new RuntimeException("Failed to create user directory in MinIO", e);
         }
 
-        logger.info("User folder in MinIO created: {}", userRootFolder);
-
+        logger.info("User folder in MinIO created for user ID: {}", user.getId());
         return user;
     }
 

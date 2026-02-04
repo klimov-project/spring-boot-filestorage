@@ -14,43 +14,46 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+
+import com.project.security.CustomAuthenticationEntryPoint;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
     private final UserDetailsService userDetailsService;
+    private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
 
-    public SecurityConfig(UserDetailsService userDetailsService) {
+    public SecurityConfig(UserDetailsService userDetailsService, CustomAuthenticationEntryPoint customAuthenticationEntryPoint) {
         this.userDetailsService = userDetailsService;
+        this.customAuthenticationEntryPoint = customAuthenticationEntryPoint;
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                // .exceptionHandling(exception -> exception
-                // .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
-                // )
-                // .sessionManagement(session -> session
-                // .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
-                // )
-                // .authorizeHttpRequests(auth -> auth
-                // .requestMatchers(
-                //         "/swagger-ui.html",
-                //         "/swagger-ui/**",
-                //         "/v3/api-docs/**",
-                //         "/v3/api-docs",
-                //         "/webjars/**",
-                //         "/swagger-resources/**",
-                //         "/swagger-resources"
-                // ).permitAll()
-                // .requestMatchers("/api/auth/**").permitAll()
-                // .requestMatchers("/api/health/**").permitAll()
-                // .requestMatchers("/api/user/**").authenticated()
-                // .anyRequest().authenticated()
-                // )
+                .exceptionHandling(exception -> exception
+                .authenticationEntryPoint(customAuthenticationEntryPoint)
+                )
+                .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                )
+                .authorizeHttpRequests(auth -> auth
+                .requestMatchers(
+                        "/swagger-ui.html",
+                        "/swagger-ui/**",
+                        "/v3/api-docs/**",
+                        "/v3/api-docs",
+                        "/webjars/**",
+                        "/swagger-resources/**",
+                        "/swagger-resources"
+                ).permitAll()
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/health/**").permitAll()
+                .requestMatchers("/api/user/**").authenticated()
+                .anyRequest().authenticated()
+                )
                 .logout(logout -> logout
                 .logoutUrl("/api/auth/sign-out")
                 .logoutSuccessHandler((request, response, authentication) -> {
@@ -83,5 +86,9 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration authConfig) throws Exception {
         return authConfig.getAuthenticationManager();
+    }
+
+    public CustomAuthenticationEntryPoint getCustomAuthenticationEntryPoint() {
+        return customAuthenticationEntryPoint;
     }
 }

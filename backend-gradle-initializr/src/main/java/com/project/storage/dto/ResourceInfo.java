@@ -14,43 +14,12 @@ import java.time.Instant;
 @AllArgsConstructor
 public class ResourceInfo {
     
-    /**
-     * Относительный путь (без префикса user-{id}-files)
-     */
     private String path;
-    
-    /**
-     * Имя ресурса
-     */
     private String name;
-    
-    /**
-     * Размер (только для файла, null для папок)
-     */
     private Long size;
-    
-    /**
-     * Тип: FILE или DIRECTORY
-     */
     private ResourceType type;
-    
-    /**
-     * ID пользователя-владельца
-     */
     private Long userId;
-    
-    /**
-     * Дата последнего изменения
-     */
     private Instant lastModified;
-    
-    /**
-     * URL для скачивания (генерируется при необходимости)
-     */
     private String downloadUrl;
-    
-    /**
-     * MIME тип файла
-     */
     private String contentType;
 }

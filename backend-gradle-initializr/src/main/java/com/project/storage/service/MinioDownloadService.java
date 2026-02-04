@@ -1,16 +1,17 @@
 package com.project.storage.service;
 
 import com.project.service.MinioService;
+import com.project.storage.dto.ResourceInfo; 
 import com.project.storage.util.PathValidator;
 import io.minio.GetObjectArgs;
-import io.minio.errors.ErrorResponseException;
+import io.minio.MinioClient;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -22,6 +23,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 @Service
+@RequiredArgsConstructor
 public class MinioDownloadService implements DownloadService {
 
     private static final Logger logger = LoggerFactory.getLogger(MinioDownloadService.class);
@@ -29,16 +31,7 @@ public class MinioDownloadService implements DownloadService {
     private final PathValidator pathValidator;
     private final StorageService storageService;
     private final MinioService minioService;
-
-    public MinioDownloadService(
-            PathValidator pathValidator,
-            StorageService storageService,
-            MinioService minioService) {
-        this.pathValidator = pathValidator;
-        this.storageService = storageService;
-        this.minioService = minioService;
-        logger.info("MinioDownloadService initialized");
-    }
+    private final MinioClient minioClient;
 
     @Override
     public DownloadResult getDownloadResource(Long userId, String path)
@@ -54,7 +47,7 @@ public class MinioDownloadService implements DownloadService {
         }
 
         // Проверяем существование ресурса через StorageService
-        var resourceInfo = storageService.getResourceInfo(userId, path);
+        ResourceInfo resourceInfo = storageService.getResourceInfo(userId, path);
 
         // Определяем полный путь в MinIO
         String userFolder = "user-" + userId + "-files";
@@ -85,8 +78,8 @@ public class MinioDownloadService implements DownloadService {
             throws IOException {
 
         try {
-            // Получаем файл из MinIO
-            InputStream stream = minioService.getMinioClient().getObject(
+            // Используем minioClient напрямую
+            InputStream stream = minioClient.getObject(
                     GetObjectArgs.builder()
                             .bucket(minioService.getBucketName())
                             .object(fullPath)
@@ -98,12 +91,6 @@ public class MinioDownloadService implements DownloadService {
                 @Override
                 public String getFilename() {
                     return originalName;
-                }
-
-                @Override
-                public void close() throws IOException {
-                    stream.close();
-                    super.close();
                 }
             };
 
@@ -121,31 +108,47 @@ public class MinioDownloadService implements DownloadService {
     private DownloadResult downloadDirectoryAsZip(Long userId, String folderPath, String folderName)
             throws IOException {
 
+        Path tempZip = null;
         try {
             // Получаем все файлы в папке рекурсивно
             List<MinioFileInfo> files = getAllFilesInFolder(userId, folderPath);
 
-            // Создаем временный файл для ZIP архива
-            Path tempZip = Files.createTempFile(folderName + "_" + UUID.randomUUID(), ".zip");
+            if (files.isEmpty()) {
+                // Создаем пустой ZIP для пустой папки
+                tempZip = Files.createTempFile(folderName + "_" + UUID.randomUUID(), ".zip");
+                try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(tempZip))) {
+                    // Пустой ZIP
+                }
+            } else {
+                // Создаем временный файл для ZIP архива
+                tempZip = Files.createTempFile(folderName + "_" + UUID.randomUUID(), ".zip");
 
-            try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(tempZip))) {
-                for (MinioFileInfo fileInfo : files) {
-                    addFileToZip(zos, fileInfo);
+                try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(tempZip))) {
+                    for (MinioFileInfo fileInfo : files) {
+                        addFileToZip(zos, fileInfo);
+                    }
                 }
             }
 
+            // Создаем InputStream для временного файла
+            InputStream zipStream = Files.newInputStream(tempZip);
+            Path finalTempZip = tempZip; // для использования в лямбде
+
             // Создаем ресурс для временного файла
-            Resource resource = new InputStreamResource(Files.newInputStream(tempZip)) {
+            Resource resource = new InputStreamResource(zipStream) {
                 @Override
                 public String getFilename() {
                     return folderName + ".zip";
                 }
 
                 @Override
-                public void close() throws IOException {
-                    super.close();
-                    // Удаляем временный файл после закрытия
-                    Files.deleteIfExists(tempZip);
+                public InputStream getInputStream() throws IOException {
+                    return Files.newInputStream(finalTempZip);
+                }
+
+                @Override
+                public boolean isOpen() {
+                    return true;
                 }
             };
 
@@ -154,6 +157,16 @@ public class MinioDownloadService implements DownloadService {
 
         } catch (Exception e) {
             logger.error("Error creating zip from MinIO folder: {}", folderPath, e);
+
+            // Очистка временного файла в случае ошибки
+            if (tempZip != null) {
+                try {
+                    Files.deleteIfExists(tempZip);
+                } catch (IOException ex) {
+                    logger.warn("Failed to delete temp file: {}", tempZip, ex);
+                }
+            }
+
             throw new IOException("Failed to create zip archive: " + e.getMessage(), e);
         }
     }
@@ -200,15 +213,12 @@ public class MinioDownloadService implements DownloadService {
      * Добавление файла из MinIO в ZIP архив
      */
     private void addFileToZip(ZipOutputStream zos, MinioFileInfo fileInfo) throws IOException {
-        try {
-            // Получаем файл из MinIO
-            InputStream fileStream = minioService.getMinioClient().getObject(
-                    GetObjectArgs.builder()
-                            .bucket(minioService.getBucketName())
-                            .object(fileInfo.getFullPath())
-                            .build()
-            );
-
+        try (InputStream fileStream = minioClient.getObject(
+                GetObjectArgs.builder()
+                        .bucket(minioService.getBucketName())
+                        .object(fileInfo.getFullPath())
+                        .build()
+        )) {
             // Определяем путь внутри ZIP архива
             String zipEntryName = extractZipEntryName(fileInfo.getFullPath());
             ZipEntry zipEntry = new ZipEntry(zipEntryName);
@@ -222,8 +232,6 @@ public class MinioDownloadService implements DownloadService {
             }
 
             zos.closeEntry();
-            fileStream.close();
-
         } catch (Exception e) {
             logger.error("Error adding file to zip: {}", fileInfo.getFullPath(), e);
             throw new IOException("Failed to add file to zip: " + fileInfo.getFullPath(), e);

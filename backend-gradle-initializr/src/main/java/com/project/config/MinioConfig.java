@@ -1,43 +1,52 @@
 package com.project.config;
 
 import io.minio.*;
-import io.minio.errors.*;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Data
 @Configuration
-@ConfigurationProperties(prefix = "minio")
+@ConfigurationProperties(prefix = "spring.minio")
 public class MinioConfig {
+
+    private static final Logger logger = LoggerFactory.getLogger(MinioConfig.class);
 
     private String url;
     private int port;
     private String accessKey;
     private String secretKey;
     private String bucket;
-    private String endpoint;
 
     @Bean
-    public MinioClient minioClient() throws Exception {
-        System.out.println("=== MinIO Config: Creating client ===");
-        endpoint = url + ":" + port;
-        System.out.println("MinIO Endpoint: " + endpoint);
-        System.out.println("MinIO Access Key: " + accessKey);
-        System.out.println("MinIO Bucket: " + bucket);
-
-        MinioClient client = MinioClient.builder()
-                .endpoint(endpoint, port, false)
-                .credentials(accessKey, secretKey)
-                .build();
-
-        // Проверяем и создаём бакет после инициализации клиента
-        initBucket(client);
-
-        System.out.println("=== MinIO Client created successfully ===");
-
-        return client;
+    public MinioClient minioClient() {
+        try {
+            logger.info("=== Initializing MinIO Client ===");
+            logger.info("URL: {}", url);
+            logger.info("Port: {}", port);
+            logger.info("Access Key: {}", accessKey != null ? "***" : "null");
+            logger.info("Bucket: {}", bucket);
+            
+            
+            MinioClient client = MinioClient.builder()
+                    .endpoint(url, port, false) // false = не использовать HTTPS
+                    .credentials(accessKey, secretKey)
+                    .build();
+            
+            logger.info("MinIO Client created successfully");
+            
+            // Инициализируем бакет
+            initBucket(client);
+            
+            return client;
+            
+        } catch (Exception e) {
+            logger.error("Failed to initialize MinIO client", e);
+            throw new RuntimeException("MinIO initialization failed", e);
+        }
     }
 
     private void initBucket(MinioClient client) throws Exception {
@@ -53,14 +62,9 @@ public class MinioConfig {
                             .bucket(bucket)
                             .build()
             );
-            System.out.println("=== Bucket '" + bucket + "' created successfully ===");
+            logger.info("Bucket '{}' created successfully", bucket);
         } else {
-            System.out.println("=== Bucket '" + bucket + "' already exists ===");
+            logger.info("Bucket '{}' already exists", bucket);
         }
-    }
-
-    @Bean
-    public String minioBucket() {
-        return bucket;
     }
 }
