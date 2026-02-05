@@ -1,5 +1,7 @@
 package com.project.storage.service;
 
+import com.project.service.StorageService;
+
 import org.springframework.core.io.Resource;
 
 import java.io.IOException;

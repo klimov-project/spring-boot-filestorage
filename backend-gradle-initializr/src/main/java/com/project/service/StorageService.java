@@ -1,13 +1,24 @@
-package com.project.storage.service;
+package com.project.service;
 
 import com.project.storage.dto.ResourceInfo;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
+import org.springframework.web.bind.annotation.ResponseStatus;
+
 public interface StorageService {
 
     public void createUserDirectory(Long id);
+
+    /**
+     * Создание пустой папки
+     */
+    ResourceInfo createDirectory(Long userId, String path)
+            throws InvalidPathException, ResourceNotFoundException, ResourceAlreadyExistsException;
+
     /**
      * Получение информации о ресурсе
      */
@@ -43,31 +54,27 @@ public interface StorageService {
     List<ResourceInfo> getDirectoryContents(Long userId, String path)
             throws ResourceNotFoundException;
 
-    /**
-     * Создание пустой папки
-     */
-    ResourceInfo createDirectory(Long userId, String path)
-            throws InvalidPathException, ResourceNotFoundException, ResourceAlreadyExistsException;
+    // Исключения с аннотациями @ResponseStatus
+    @ResponseStatus(code = HttpStatus.BAD_REQUEST, reason = "Невалидный путь")
+    class InvalidPathException extends RuntimeException {
 
+        public InvalidPathException(String message) {
+            super(message);
+        }
+    }
 
-    // Исключения для обработки ошибок
-    class ResourceNotFoundException extends Exception {
+    @ResponseStatus(code = HttpStatus.NOT_FOUND, reason = "Ресурс не найден")
+    class ResourceNotFoundException extends RuntimeException {
 
         public ResourceNotFoundException(String message) {
             super(message);
         }
     }
 
-    class ResourceAlreadyExistsException extends Exception {
+    @ResponseStatus(code = HttpStatus.CONFLICT, reason = "Ресурс уже существует")
+    class ResourceAlreadyExistsException extends RuntimeException {
 
         public ResourceAlreadyExistsException(String message) {
-            super(message);
-        }
-    }
-
-    class InvalidPathException extends Exception {
-
-        public InvalidPathException(String message) {
             super(message);
         }
     }

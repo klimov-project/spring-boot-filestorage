@@ -1,6 +1,7 @@
 package com.project.exception;
 
 import com.project.dto.response.ErrorResponse;
+import com.project.service.StorageService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -8,6 +9,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.HashMap;
@@ -37,15 +39,37 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Обработка всех остальных исключений
+     * Обработка ResponseStatusException (из MinioServiceImpl)
      */
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleAllExceptions(Exception ex) {
-        System.out.println("=== ResponseEntity Exception ===");
-        System.out.println(ex);
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ErrorResponse> handleResponseStatusException(ResponseStatusException ex) {
         return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ErrorResponse("Внутренняя ошибка сервера"));
+                .status(ex.getStatusCode())
+                .body(new ErrorResponse(ex.getReason()));
+    }
+
+    /**
+     * Обработка кастомных исключений StorageService
+     */
+    @ExceptionHandler(StorageService.ResourceAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleResourceAlreadyExists(StorageService.ResourceAlreadyExistsException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(StorageService.ResourceNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleResourceNotFound(StorageService.ResourceNotFoundException ex) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(StorageService.InvalidPathException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidPath(StorageService.InvalidPathException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(ex.getMessage()));
     }
 
     @ExceptionHandler(UsernameExistsException.class)
@@ -67,5 +91,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponse("Ресурс не найден"));
+    }
+
+    /**
+     * Обработка всех остальных исключений
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleAllExceptions(Exception ex) {
+        System.out.println("=== Unhandled Exception ===");
+        ex.printStackTrace(); // Лучше использовать logger
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse("Внутренняя ошибка сервера"));
     }
 }

@@ -2,6 +2,7 @@ package com.project.storage.service;
 
 import com.project.entity.MinioObject;
 import com.project.service.MinioService;
+import com.project.service.StorageService;
 import com.project.storage.dto.ResourceInfo;
 import com.project.storage.model.ResourceType;
 import org.springframework.stereotype.Service;
@@ -21,8 +22,6 @@ public class MinioStorageService implements StorageService {
 
     /**
      * Создание корневой директории пользователя
-     *
-     * @Override
      */
     @Override
     public void createUserDirectory(Long userId) {
@@ -33,6 +32,35 @@ public class MinioStorageService implements StorageService {
             // Преобразуем исключение MinIO в наше
             throw new RuntimeException("Failed to create user directory", e);
         }
+    }
+
+    /**
+     * Создание директории
+     */
+    @Override
+    public ResourceInfo createDirectory(Long userId, String relativePath)
+            throws InvalidPathException, ResourceNotFoundException, ResourceAlreadyExistsException {
+
+        // Валидация пути
+        if (relativePath == null || relativePath.trim().isEmpty()) {
+            throw new InvalidPathException("Путь не может быть пустым");
+        }
+
+        if (relativePath.contains("..")) {
+            throw new InvalidPathException("Путь содержит недопустимые символы");
+        }
+
+        String fullPath = getFullPath(userId, relativePath);
+
+        // Добавляем слэш в конце если это папка
+        if (!fullPath.endsWith("/")) {
+            fullPath = fullPath + "/";
+        }
+
+        // Делегируем создание папки MinioService
+        minioService.createFolder(fullPath);
+
+        return getResourceInfo(userId, relativePath);
     }
 
     /**
@@ -173,22 +201,6 @@ public class MinioStorageService implements StorageService {
         return minioService.listObjects(fullPath).stream()
                 .map(obj -> convertToResourceInfo(userId, obj))
                 .collect(Collectors.toList());
-    }
-
-    @Override
-    public ResourceInfo createDirectory(Long userId, String relativePath)
-            throws InvalidPathException, ResourceNotFoundException, ResourceAlreadyExistsException {
-
-        validatePath(relativePath);
-        String fullPath = getFullPath(userId, relativePath);
-
-        // Добавляем слэш в конце если это папка
-        if (!fullPath.endsWith("/")) {
-            fullPath = fullPath + "/";
-        }
-
-        minioService.createFolder(fullPath);
-        return getResourceInfo(userId, relativePath);
     }
 
     /**

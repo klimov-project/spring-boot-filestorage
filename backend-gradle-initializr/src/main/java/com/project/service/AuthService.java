@@ -15,8 +15,6 @@ import com.project.entity.User;
 import com.project.repository.UserRepository;
 import com.project.exception.UsernameExistsException;
 
-import com.project.storage.service.StorageService;
-
 @Service
 public class AuthService {
 
