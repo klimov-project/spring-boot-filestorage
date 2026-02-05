@@ -4,6 +4,7 @@ import com.project.entity.MinioObject;
 import com.project.service.MinioService;
 import com.project.service.StorageService;
 import com.project.storage.dto.ResourceInfo;
+import com.project.storage.exception.StorageException;
 import com.project.storage.model.ResourceType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,119 +21,67 @@ public class MinioStorageService implements StorageService {
         this.minioService = minioService;
     }
 
-    /**
-     * Создание корневой директории пользователя
-     */
     @Override
     public void createUserDirectory(Long userId) {
-        String userRootFolder = "user-" + userId + "-files/";
+        String userRootFolder = getUserFolderPath(userId) + "/";
         try {
             minioService.createFolder(userRootFolder);
         } catch (Exception e) {
-            // Преобразуем исключение MinIO в наше
-            throw new RuntimeException("Failed to create user directory", e);
+            throw new RuntimeException("Failed to create user directory for user " + userId, e);
         }
     }
 
-    /**
-     * Создание директории
-     */
     @Override
-    public ResourceInfo createDirectory(Long userId, String relativePath)
-            throws InvalidPathException, ResourceNotFoundException, ResourceAlreadyExistsException {
+    public ResourceInfo createDirectory(Long userId, String relativePath) {
+        validatePath(relativePath);
 
-        // Валидация пути
         if (relativePath == null || relativePath.trim().isEmpty()) {
-            throw new InvalidPathException("Путь не может быть пустым");
-        }
-
-        if (relativePath.contains("..")) {
-            throw new InvalidPathException("Путь содержит недопустимые символы");
+            throw new StorageException.InvalidPathException(
+                    "Путь не может быть пустым", userId, relativePath
+            );
         }
 
         String fullPath = getFullPath(userId, relativePath);
 
-        // Добавляем слэш в конце если это папка
+        // Добавляем слэш для папок
         if (!fullPath.endsWith("/")) {
             fullPath = fullPath + "/";
         }
 
-        // Делегируем создание папки MinioService
-        minioService.createFolder(fullPath);
-
-        return getResourceInfo(userId, relativePath);
-    }
-
-    /**
-     * Получение полного пути в MinIO для пользователя
-     */
-    private String getFullPath(Long userId, String relativePath) {
-        String userFolder = getUserFolderPath(userId);
-
-        if (relativePath == null || relativePath.isEmpty() || "/".equals(relativePath)) {
-            return userFolder + "/";
-        }
-
-        // Убираем начальный слэш если есть
-        String cleanPath = relativePath.startsWith("/")
-                ? relativePath.substring(1)
-                : relativePath;
-
-        // Добавляем слэш в конце если это папка и его нет
-        if (cleanPath.endsWith("/")) {
-            return userFolder + "/" + cleanPath;
-        }
-
-        return userFolder + "/" + cleanPath;
-    }
-
-    /**
-     * Получение относительного пути (без префикса пользователя)
-     */
-    private String getRelativePath(Long userId, String fullPath) {
-        String userPrefix = getUserFolderPath(userId) + "/";
-
-        if (fullPath.startsWith(userPrefix)) {
-            return fullPath.substring(userPrefix.length());
-        }
-
-        // Если путь не содержит префикс пользователя, возвращаем как есть
-        return fullPath;
-    }
-
-    /**
-     * Получение пути к папке пользователя
-     */
-    public String getUserFolderPath(Long userId) {
-        return String.format("user-%d-files", userId);
-    }
-
-    /**
-     * Валидация пути для предотвращения path traversal атак
-     */
-    private void validatePath(String path) {
-        if (path == null) {
-            return;
-        }
-
-        if (path.contains("..")) {
-            throw new IllegalArgumentException("Path traversal not allowed");
-        }
-
-        if (path.contains("//")) {
-            throw new IllegalArgumentException("Invalid path format");
+        try {
+            minioService.createFolder(fullPath);
+            return getResourceInfo(userId, relativePath);
+        } catch (RuntimeException e) {
+            // Преобразуем исключения MinioService
+            String errorMsg = e.getMessage();
+            if (errorMsg != null) {
+                if (errorMsg.contains("Папка уже существует")) {
+                    throw new StorageException.ResourceAlreadyExistsException(
+                            "Папка уже существует: " + relativePath, userId, relativePath
+                    );
+                } else if (errorMsg.contains("Родительская папка не существует")) {
+                    throw new StorageException.ResourceNotFoundException(
+                            "Родительская папка не существует: " + getParentPath(relativePath),
+                            userId, getParentPath(relativePath)
+                    );
+                } else if (errorMsg.contains("Невалидный путь")) {
+                    throw new StorageException.InvalidPathException(
+                            "Невалидный путь: " + relativePath, userId, relativePath
+                    );
+                }
+            }
+            throw new RuntimeException("Ошибка при создании папки: " + e.getMessage(), e);
         }
     }
 
     @Override
-    public ResourceInfo getResourceInfo(Long userId, String relativePath)
-            throws ResourceNotFoundException {
-
+    public ResourceInfo getResourceInfo(Long userId, String relativePath) {
         validatePath(relativePath);
+
         String fullPath = getFullPath(userId, relativePath);
 
-        if ("/".equals(relativePath)) {
-            // Возвращаем специальный объект для корневой директории
+        // Обработка корневой директории
+        if ("/".equals(relativePath) || relativePath == null || relativePath.isEmpty()) {
             return ResourceInfo.builder()
                     .path("/")
                     .name("root")
@@ -141,79 +90,218 @@ public class MinioStorageService implements StorageService {
                     .build();
         }
 
-        List<MinioObject> objects = minioService.listObjects(fullPath);
-        if (objects.isEmpty()) {
-            throw new ResourceNotFoundException("Resource not found: " + relativePath);
+        try {
+            MinioObject object = minioService.getObjectInfo(fullPath);
+            return convertToResourceInfo(userId, object);
+        } catch (RuntimeException e) {
+            String errorMsg = e.getMessage();
+            if (errorMsg != null && (errorMsg.contains("Ресурс не найден")
+                    || errorMsg.contains("NoSuchKey"))) {
+                throw new StorageException.ResourceNotFoundException(
+                        "Ресурс не найден: " + relativePath, userId, relativePath
+                );
+            }
+            throw new RuntimeException("Ошибка при получении информации о ресурсе: " + e.getMessage(), e);
         }
-        return convertToResourceInfo(userId, objects.get(0));
     }
 
     @Override
-    public void deleteResource(Long userId, String relativePath)
-            throws ResourceNotFoundException {
-
+    public void deleteResource(Long userId, String relativePath) {
         validatePath(relativePath);
+
         String fullPath = getFullPath(userId, relativePath);
-        minioService.deleteObject(fullPath);
+
+        try {
+            // Проверяем существование перед удалением
+            minioService.getObjectInfo(fullPath);
+            minioService.deleteObject(fullPath);
+        } catch (RuntimeException e) {
+            String errorMsg = e.getMessage();
+            if (errorMsg != null && (errorMsg.contains("Ресурс не найден")
+                    || errorMsg.contains("NoSuchKey"))) {
+                throw new StorageException.ResourceNotFoundException(
+                        "Ресурс не найден: " + relativePath, userId, relativePath
+                );
+            }
+            throw new RuntimeException("Ошибка при удалении ресурса: " + e.getMessage(), e);
+        }
     }
 
     @Override
-    public ResourceInfo moveResource(Long userId, String fromRelativePath, String toRelativePath)
-            throws ResourceNotFoundException, ResourceAlreadyExistsException, InvalidPathException {
-
+    public ResourceInfo moveResource(Long userId, String fromRelativePath, String toRelativePath) {
         validatePath(fromRelativePath);
         validatePath(toRelativePath);
 
         String fromFullPath = getFullPath(userId, fromRelativePath);
         String toFullPath = getFullPath(userId, toRelativePath);
 
-        minioService.renameObject(fromFullPath, toFullPath);
-        return getResourceInfo(userId, toRelativePath);
+        try {
+            // Проверяем существование исходного ресурса
+            minioService.getObjectInfo(fromFullPath);
+
+            // Проверяем, не существует ли уже целевой ресурс
+            try {
+                minioService.getObjectInfo(toFullPath);
+                throw new StorageException.ResourceAlreadyExistsException(
+                        "Ресурс уже существует: " + toRelativePath, userId, toRelativePath
+                );
+            } catch (RuntimeException ex) {
+                // Ресурс не существует - можно продолжать
+            }
+
+            minioService.renameObject(fromFullPath, toFullPath);
+            return getResourceInfo(userId, toRelativePath);
+        } catch (StorageException.ResourceAlreadyExistsException ex) {
+            throw ex; // Пробрасываем как есть
+        } catch (RuntimeException e) {
+            String errorMsg = e.getMessage();
+            if (errorMsg != null && errorMsg.contains("Ресурс не найден")) {
+                throw new StorageException.ResourceNotFoundException(
+                        "Ресурс не найден: " + fromRelativePath, userId, fromRelativePath
+                );
+            }
+            throw new RuntimeException("Ошибка при перемещении ресурса: " + e.getMessage(), e);
+        }
     }
 
     @Override
     public List<ResourceInfo> searchResources(Long userId, String query) {
+        if (query == null || query.trim().isEmpty()) {
+            throw new StorageException.InvalidPathException(
+                    "Поисковый запрос не может быть пустым", userId, null
+            );
+        }
+
         String userFolder = getUserFolderPath(userId);
-        return minioService.searchFiles(userFolder, query).stream()
+        List<MinioObject> results = minioService.searchFiles(userFolder, query);
+
+        return results.stream()
                 .map(obj -> convertToResourceInfo(userId, obj))
                 .collect(Collectors.toList());
     }
 
     @Override
-    public List<ResourceInfo> uploadFiles(Long userId, String destinationRelativePath, MultipartFile[] files)
-            throws InvalidPathException, ResourceAlreadyExistsException {
-
+    public List<ResourceInfo> uploadFiles(Long userId, String destinationRelativePath, MultipartFile[] files) {
         validatePath(destinationRelativePath);
+
+        if (files == null || files.length == 0) {
+            throw new StorageException.InvalidPathException(
+                    "Не указаны файлы для загрузки", userId, destinationRelativePath
+            );
+        }
+
         String destinationFullPath = getFullPath(userId, destinationRelativePath);
 
-        return minioService.uploadFiles(destinationFullPath, files).stream()
-                .map(obj -> convertToResourceInfo(userId, obj))
-                .collect(Collectors.toList());
+        try {
+            List<MinioObject> uploaded = minioService.uploadFiles(destinationFullPath, files);
+            return uploaded.stream()
+                    .map(obj -> convertToResourceInfo(userId, obj))
+                    .collect(Collectors.toList());
+        } catch (RuntimeException e) {
+            String errorMsg = e.getMessage();
+            if (errorMsg != null && (errorMsg.contains("уже существует")
+                    || errorMsg.contains("CONFLICT"))) {
+                throw new StorageException.ResourceAlreadyExistsException(
+                        "Файл уже существует в папке назначения", userId, destinationRelativePath
+                );
+            }
+            throw new RuntimeException("Ошибка при загрузке файлов: " + e.getMessage(), e);
+        }
     }
 
     @Override
-    public List<ResourceInfo> getDirectoryContents(Long userId, String relativePath)
-            throws ResourceNotFoundException {
-
+    public List<ResourceInfo> getDirectoryContents(Long userId, String relativePath) {
         validatePath(relativePath);
+
         String fullPath = getFullPath(userId, relativePath);
 
-        return minioService.listObjects(fullPath).stream()
-                .map(obj -> convertToResourceInfo(userId, obj))
-                .collect(Collectors.toList());
+        try {
+            List<MinioObject> objects = minioService.listObjects(fullPath);
+            return objects.stream()
+                    .map(obj -> convertToResourceInfo(userId, obj))
+                    .collect(Collectors.toList());
+        } catch (RuntimeException e) {
+            String errorMsg = e.getMessage();
+            if (errorMsg != null && (errorMsg.contains("Ресурс не найден")
+                    || errorMsg.contains("NoSuchKey"))) {
+                throw new StorageException.ResourceNotFoundException(
+                        "Папка не существует: " + relativePath, userId, relativePath
+                );
+            }
+            throw new RuntimeException("Ошибка при получении содержимого папки: " + e.getMessage(), e);
+        }
     }
 
-    /**
-     * Конвертация MinioObject в ResourceInfo с учетом userId
-     */
-    private ResourceInfo convertToResourceInfo(Long userId, MinioObject minioObject) {
-        String relativePath = getRelativePath(userId, minioObject.getPath());
-        String name = extractNameFromPath(relativePath);
+    // ============= ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ =============
+    private void validatePath(String path) {
+        if (path == null) {
+            return;
+        }
 
-        ResourceType type = minioObject.isDirectory() ? ResourceType.DIRECTORY : ResourceType.FILE;
+        if (path.contains("..")) {
+            throw new StorageException.InvalidPathException(
+                    "Путь содержит недопустимые символы '..'", null, path
+            );
+        }
+    }
+
+    private String getFullPath(Long userId, String relativePath) {
+        String userFolder = getUserFolderPath(userId) + "/";
+
+        if (relativePath == null || relativePath.isEmpty() || "/".equals(relativePath)) {
+            return userFolder;
+        }
+
+        String cleanPath = relativePath.startsWith("/")
+                ? relativePath.substring(1)
+                : relativePath;
+
+        return userFolder + cleanPath;
+    }
+
+    private String getRelativePath(Long userId, String fullPath) {
+        String userPrefix = getUserFolderPath(userId) + "/";
+
+        if (fullPath.startsWith(userPrefix)) {
+            return fullPath.substring(userPrefix.length());
+        }
+
+        return fullPath;
+    }
+
+    private String getUserFolderPath(Long userId) {
+        return "user-" + userId + "-files";
+    }
+
+    private String getParentPath(String path) {
+        if (path == null || path.isEmpty() || "/".equals(path)) {
+            return "/";
+        }
+
+        String cleanPath = path.endsWith("/")
+                ? path.substring(0, path.length() - 1)
+                : path;
+
+        int lastSlash = cleanPath.lastIndexOf('/');
+        if (lastSlash == -1) {
+            return "/";
+        }
+
+        return cleanPath.substring(0, lastSlash + 1);
+    }
+
+    private ResourceInfo convertToResourceInfo(Long userId, MinioObject minioObject) {
+        String fullPath = minioObject.getPath();
+        String relativePath = getRelativePath(userId, fullPath);
+        String name = extractNameFromPath(relativePath);
+        String parentPath = getParentPath(relativePath);
+
+        ResourceType type = minioObject.isDirectory()
+                ? ResourceType.DIRECTORY
+                : ResourceType.FILE;
 
         return ResourceInfo.builder()
-                .path(relativePath)
+                .path(parentPath)
                 .name(name)
                 .size(type == ResourceType.FILE ? minioObject.getSize() : null)
                 .type(type)
@@ -221,9 +309,6 @@ public class MinioStorageService implements StorageService {
                 .build();
     }
 
-    /**
-     * Извлечение имени файла/папки из пути
-     */
     private String extractNameFromPath(String path) {
         if (path == null || path.isEmpty()) {
             return "";
@@ -234,10 +319,6 @@ public class MinioStorageService implements StorageService {
         }
 
         int lastSlash = path.lastIndexOf('/');
-        if (lastSlash != -1) {
-            return path.substring(lastSlash + 1);
-        }
-
-        return path;
+        return lastSlash != -1 ? path.substring(lastSlash + 1) : path;
     }
 }

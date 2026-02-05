@@ -1,13 +1,11 @@
 package com.project.service;
 
 import com.project.storage.dto.ResourceInfo;
-
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
-
-import org.springframework.web.bind.annotation.ResponseStatus;
 
 public interface StorageService {
 
@@ -23,13 +21,13 @@ public interface StorageService {
      * Получение информации о ресурсе
      */
     ResourceInfo getResourceInfo(Long userId, String path)
-            throws ResourceNotFoundException;
+            throws ResourceNotFoundException, InvalidPathException;
 
     /**
      * Удаление ресурса
      */
     void deleteResource(Long userId, String path)
-            throws ResourceNotFoundException;
+            throws ResourceNotFoundException, InvalidPathException;
 
     /**
      * Переименование/перемещение ресурса
@@ -40,7 +38,8 @@ public interface StorageService {
     /**
      * Поиск ресурсов по имени
      */
-    List<ResourceInfo> searchResources(Long userId, String query);
+    List<ResourceInfo> searchResources(Long userId, String query)
+            throws InvalidPathException;
 
     /**
      * Загрузка файлов
@@ -52,9 +51,9 @@ public interface StorageService {
      * Получение содержимого папки
      */
     List<ResourceInfo> getDirectoryContents(Long userId, String path)
-            throws ResourceNotFoundException;
+            throws ResourceNotFoundException, InvalidPathException;
 
-    // Исключения с аннотациями @ResponseStatus
+    // Оставляем существующие классы исключений для обратной совместимости
     @ResponseStatus(code = HttpStatus.BAD_REQUEST, reason = "Невалидный путь")
     class InvalidPathException extends RuntimeException {
 

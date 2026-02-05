@@ -46,31 +46,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(ex.getStatusCode())
                 .body(new ErrorResponse(ex.getReason()));
-    }
-
-    /**
-     * Обработка кастомных исключений StorageService
-     */
-    @ExceptionHandler(StorageService.ResourceAlreadyExistsException.class)
-    public ResponseEntity<ErrorResponse> handleResourceAlreadyExists(StorageService.ResourceAlreadyExistsException ex) {
-        return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body(new ErrorResponse(ex.getMessage()));
-    }
-
-    @ExceptionHandler(StorageService.ResourceNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleResourceNotFound(StorageService.ResourceNotFoundException ex) {
-        return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(new ErrorResponse(ex.getMessage()));
-    }
-
-    @ExceptionHandler(StorageService.InvalidPathException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidPath(StorageService.InvalidPathException ex) {
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(new ErrorResponse(ex.getMessage()));
-    }
+    } 
 
     @ExceptionHandler(UsernameExistsException.class)
     public ResponseEntity<ErrorResponse> handleUsernameExists(UsernameExistsException ex) {
@@ -91,6 +67,31 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponse("Ресурс не найден"));
+    }
+
+    /**
+     * Обработка исключений StorageException
+     */
+    
+    @ExceptionHandler(StorageService.ResourceAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleResourceAlreadyExists(StorageService.ResourceAlreadyExistsException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(StorageService.ResourceNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleResourceNotFound(StorageService.ResourceNotFoundException ex) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(StorageService.InvalidPathException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidPath(StorageService.InvalidPathException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(ex.getMessage()));
     }
 
     /**

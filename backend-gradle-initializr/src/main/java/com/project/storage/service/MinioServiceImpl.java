@@ -1,4 +1,4 @@
-package com.project.service;
+package com.project.storage.service;
 
 import com.project.entity.MinioObject;
 import io.minio.*;
@@ -17,6 +17,8 @@ import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
+
+import com.project.service.MinioService;
 
 @Service
 @RequiredArgsConstructor
@@ -63,7 +65,13 @@ public class MinioServiceImpl implements MinioService {
             );
             logger.debug("Объект удалён: {}", fullPath);
         } catch (Exception e) {
-            throw MinioExceptionHandler.handleGenericException(e, fullPath, "удалении");
+            if (e instanceof ErrorResponseException) {
+                ErrorResponseException err = (ErrorResponseException) e;
+                if ("NoSuchKey".equals(err.errorResponse().code())) {
+                    throw new RuntimeException("Ресурс не найден: " + extractRelativePath(fullPath));
+                }
+            }
+            throw new RuntimeException("Ошибка при удалении: " + e.getMessage(), e);
         }
     }
 
@@ -157,7 +165,21 @@ public class MinioServiceImpl implements MinioService {
             createFolderInMinio(fullPath);
             logger.debug("Папка создана: {}", fullPath);
         } catch (Exception e) {
-            throw MinioExceptionHandler.handleFolderCreationException(e, fullPath, "создании папки");
+ 
+            // Преобразуем исключения в понятные RuntimeException
+            if (e instanceof IllegalStateException) {
+                throw new RuntimeException("Папка уже существует: " + extractRelativePath(fullPath));
+            } else if (e instanceof NoSuchElementException) {
+                throw new RuntimeException("Родительская папка не существует: " + getParentPath(fullPath));
+            } else if (e instanceof IllegalArgumentException) {
+                throw new RuntimeException("Невалидный путь: " + e.getMessage());
+            } else if (e instanceof ErrorResponseException) {
+                ErrorResponseException err = (ErrorResponseException) e;
+                if ("NoSuchKey".equals(err.errorResponse().code())) {
+                    throw new RuntimeException("Ресурс не найден: " + extractRelativePath(fullPath));
+                }
+            }
+            throw new RuntimeException("Ошибка при создании папки: " + e.getMessage(), e);
         }
     }
 
@@ -191,9 +213,9 @@ public class MinioServiceImpl implements MinioService {
             if ("NoSuchKey".equals(e.errorResponse().code())) {
                 return false;
             }
-            throw MinioExceptionHandler.handleGenericException(e, fullPath, "проверке существования");
+            throw MinioExceptionHandler.handleGenericException(e, fullPath, "проверка существования");
         } catch (Exception e) {
-            throw MinioExceptionHandler.handleGenericException(e, fullPath, "проверке существования");
+            throw MinioExceptionHandler.handleGenericException(e, fullPath, "проверка существования");
         }
     }
 
@@ -214,7 +236,13 @@ public class MinioServiceImpl implements MinioService {
                     .isDirectory(fullPath.endsWith("/"))
                     .build();
         } catch (Exception e) {
-            throw MinioExceptionHandler.handleGenericException(e, fullPath, "получении информации");
+            if (e instanceof ErrorResponseException) {
+                ErrorResponseException err = (ErrorResponseException) e;
+                if ("NoSuchKey".equals(err.errorResponse().code())) {
+                    throw new RuntimeException("Ресурс не найден: " + extractRelativePath(fullPath));
+                }
+            }
+            throw new RuntimeException("Ошибка при получении информации: " + e.getMessage(), e);
         }
     }
 
@@ -225,24 +253,35 @@ public class MinioServiceImpl implements MinioService {
 
     // ============= ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ =============
     private void validateFolderCreation(String fullPath) throws Exception {
+        // Удаляем завершающий слеш если есть
+        String normalizedPath = fullPath.endsWith("/")
+                ? fullPath.substring(0, fullPath.length() - 1)
+                : fullPath;
+
         // Проверка существования папки
-        if (objectExists(fullPath)) {
+        if (objectExists(normalizedPath + "/")) {
             throw new IllegalStateException("Папка уже существует");
         }
 
         // Проверка родительской папки
         if (fullPath.contains("/")) {
-            String parentPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
-            if (!parentPath.isEmpty()) {
-                String parentObjectName = ensureTrailingSlash(parentPath);
-                if (!objectExists(parentObjectName)) {
-                    throw new NoSuchElementException("Родительская папка не существует");
+            // Находим последний слеш
+            int lastSlashIndex = normalizedPath.lastIndexOf('/');
+            if (lastSlashIndex > 0) {
+                // Берем путь до последнего слеша 
+                String parentPath = normalizedPath.substring(0, lastSlashIndex);
+
+                if (!parentPath.isEmpty()) {
+                    String parentObjectName = ensureTrailingSlash(parentPath);
+                    if (!objectExists(parentObjectName)) {
+                        throw new NoSuchElementException("Родительская папка не существует");
+                    }
                 }
             }
         }
     }
 
-    private void createFolderInMinio(String fullPath) throws Exception {
+    private  void createFolderInMinio(String fullPath) throws Exception {
         minioClient.putObject(
                 PutObjectArgs.builder()
                         .bucket(bucket)
@@ -276,5 +315,41 @@ public class MinioServiceImpl implements MinioService {
 
         int lastSlash = path.lastIndexOf('/');
         return lastSlash != -1 ? path.substring(lastSlash + 1) : path;
+    }
+
+    private String extractRelativePath(String fullPath) {
+        // Извлекаем часть пути после user-{id}-files/
+        String[] parts = fullPath.split("/");
+        if (parts.length > 1 && parts[0].startsWith("user-") && parts[0].endsWith("-files")) {
+            if (parts.length == 1) {
+                return "/";
+            }
+            StringBuilder relative = new StringBuilder();
+            for (int i = 1; i < parts.length; i++) {
+                relative.append(parts[i]);
+                if (i < parts.length - 1 || fullPath.endsWith("/")) {
+                    relative.append("/");
+                }
+            }
+            return relative.toString();
+        }
+        return fullPath;
+    }
+
+    private String getParentPath(String fullPath) {
+        if (fullPath == null || fullPath.isEmpty()) {
+            return "";
+        }
+
+        if (fullPath.endsWith("/")) {
+            fullPath = fullPath.substring(0, fullPath.length() - 1);
+        }
+
+        int lastSlash = fullPath.lastIndexOf('/');
+        if (lastSlash == -1) {
+            return "";
+        }
+
+        return fullPath.substring(0, lastSlash + 1);
     }
 }
