@@ -2,6 +2,7 @@ package com.project.storage.service;
 
 import com.project.service.MinioService;
 import com.project.service.StorageService;
+import com.project.exception.StorageException;
 import com.project.storage.dto.ResourceInfo; 
 import com.project.storage.util.PathValidator;
 import io.minio.GetObjectArgs;
@@ -30,25 +31,25 @@ public class MinioDownloadService implements DownloadService {
     private static final Logger logger = LoggerFactory.getLogger(MinioDownloadService.class);
 
     private final PathValidator pathValidator;
-    private final StorageService storageService;
+    private final StorageException StorageException;
     private final MinioService minioService;
     private final MinioClient minioClient;
 
     @Override
     public DownloadResult getDownloadResource(Long userId, String path)
-            throws StorageService.ResourceNotFoundException,
-            StorageService.InvalidPathException,
+            throws StorageException.ResourceNotFoundException,
+            StorageException.InvalidPathException,
             IOException {
 
         logger.info("User {}: Preparing download for path: {}", userId, path);
 
         // Валидация пути
         if (pathValidator.validateAndGetType(path) == null) {
-            throw new StorageService.InvalidPathException("Invalid path: " + path);
+            throw new StorageException.InvalidPathException("Invalid path: " + path);
         }
 
-        // Проверяем существование ресурса через StorageService
-        ResourceInfo resourceInfo = storageService.getResourceInfo(userId, path);
+        // Проверяем существование ресурса через StorageException
+        ResourceInfo resourceInfo = StorageService.getResourceInfo(userId, path);
 
         // Определяем полный путь в MinIO
         String userFolder = "user-" + userId + "-files";
@@ -58,7 +59,7 @@ public class MinioDownloadService implements DownloadService {
 
         // Проверяем существование объекта в MinIO
         if (!minioService.objectExists(fullPath)) {
-            throw new StorageService.ResourceNotFoundException("Resource not found: " + path);
+            throw new StorageException.ResourceNotFoundException("Resource not found: " + path);
         }
 
         // Обработка файла
@@ -185,7 +186,7 @@ public class MinioDownloadService implements DownloadService {
                 relativePath = relativePath.substring(0, relativePath.length() - 1);
             }
 
-            List<ResourceInfo> contents = storageService.getDirectoryContents(userId, relativePath);
+            List<ResourceInfo> contents = StorageService.getDirectoryContents(userId, relativePath);
 
             for (ResourceInfo item : contents) {
                 if (item.getType() == com.project.storage.model.ResourceType.FILE) {

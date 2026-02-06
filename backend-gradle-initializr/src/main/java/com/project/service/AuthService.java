@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.project.service.StorageService;
 
 import com.project.dto.request.SignupRequest;
 import com.project.entity.User;
@@ -22,17 +23,17 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
-    private final StorageService storageService;
+    private final StorageService StorageService;
 
     public AuthService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager,
-            StorageService storageService) {
+            StorageService StorageService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
-        this.storageService = storageService;
+        this.StorageService = StorageService;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -53,7 +54,7 @@ public class AuthService {
         logger.info("Attempting to create root user folder for user ID: {}", user.getId());
 
         try {
-            storageService.createUserDirectory(user.getId());
+            StorageService.createUserDirectory(user.getId());
         } catch (Exception e) {
             logger.error("Failed to create user directory in MinIO for user {}: {}",
                     user.getId(), e.getMessage(), e);

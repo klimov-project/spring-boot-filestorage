@@ -1,7 +1,7 @@
 package com.project.exception;
 
 import com.project.dto.response.ErrorResponse;
-import com.project.service.StorageService;
+import com.project.exception.StorageException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -73,22 +73,22 @@ public class GlobalExceptionHandler {
      * Обработка исключений StorageException
      */
     
-    @ExceptionHandler(StorageService.ResourceAlreadyExistsException.class)
-    public ResponseEntity<ErrorResponse> handleResourceAlreadyExists(StorageService.ResourceAlreadyExistsException ex) {
+    @ExceptionHandler(StorageException.ResourceAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleResourceAlreadyExists(StorageException.ResourceAlreadyExistsException ex) {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(new ErrorResponse(ex.getMessage()));
     }
 
-    @ExceptionHandler(StorageService.ResourceNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleResourceNotFound(StorageService.ResourceNotFoundException ex) {
+    @ExceptionHandler(StorageException.ResourceNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleResourceNotFound(StorageException.ResourceNotFoundException ex) {
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponse(ex.getMessage()));
     }
 
-    @ExceptionHandler(StorageService.InvalidPathException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidPath(StorageService.InvalidPathException ex) {
+    @ExceptionHandler(StorageException.InvalidPathException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidPath(StorageException.InvalidPathException ex) {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse(ex.getMessage()));

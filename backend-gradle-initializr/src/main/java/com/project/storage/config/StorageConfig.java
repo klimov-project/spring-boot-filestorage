@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
 public class StorageConfig {
 
     @Bean
-    public StorageService storageService(MinioService minioService) {
+    public StorageService StorageService(MinioService minioService) {
         return new MinioStorageService(minioService);
     }
 }

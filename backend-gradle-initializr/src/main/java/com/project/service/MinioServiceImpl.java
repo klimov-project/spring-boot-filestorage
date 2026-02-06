@@ -1,4 +1,4 @@
-package com.project.storage.service;
+package com.project.service;
 
 import com.project.entity.MinioObject;
 import io.minio.*;
@@ -11,7 +11,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import com.project.storage.util.MinioExceptionHandler;
 
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
@@ -20,8 +19,8 @@ import java.util.NoSuchElementException;
 
 import com.project.service.MinioService;
 
-@Service
 @RequiredArgsConstructor
+@Service
 public class MinioServiceImpl implements MinioService {
 
     private static final Logger logger = LoggerFactory.getLogger(MinioServiceImpl.class);
@@ -45,12 +44,83 @@ public class MinioServiceImpl implements MinioService {
                             .build()
             )) {
                 Item item = result.get();
+                // Пропускаем саму папку (объект с именем равным префиксу)
+                if (item.objectName().equals(prefix)) {
+                    continue;
+                }
+
                 objects.add(createMinioObject(item));
             }
 
             return objects;
         } catch (Exception e) {
-            throw MinioExceptionHandler.handleGenericException(e, fullPath, "получении списка");
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void createFolder(String fullPath) {
+        try {
+            validateFolderCreation(fullPath);
+            createFolderInMinio(fullPath);
+            logger.debug("Папка создана: {}", fullPath);
+        } catch (Exception e) {
+
+            // Преобразуем исключения в понятные RuntimeException
+            if (e instanceof IllegalStateException) {
+                throw new RuntimeException("Папка уже существует: " + extractRelativePath(fullPath));
+            } else if (e instanceof NoSuchElementException) {
+                throw new RuntimeException("Родительская папка не существует: " + getParentPath(fullPath));
+            } else if (e instanceof IllegalArgumentException) {
+                throw new RuntimeException("Невалидный путь: " + e.getMessage());
+            } else if (e instanceof ErrorResponseException) {
+                ErrorResponseException err = (ErrorResponseException) e;
+                if ("NoSuchKey".equals(err.errorResponse().code())) {
+                    throw new RuntimeException("Ресурс не найден: " + extractRelativePath(fullPath));
+                }
+            }
+            throw new RuntimeException("Ошибка при создании папки: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public List<MinioObject> uploadFiles(String destinationFullPath, MultipartFile[] files) {
+        logger.info("=== Initializing uploadFiles IMLEMENT   ===");
+        logger.info("=== files: {}   ===", files);
+        List<MinioObject> uploadedObjects = new ArrayList<>();
+
+        try {
+            logger.info("=== Initializing uploadFiles IMLEMENT 222  ===");
+            String destination = ensureTrailingSlash(destinationFullPath);
+            logger.info("=== destination: {}   ===", destination);
+
+            for (MultipartFile file : files) {
+                logger.info("=== Initializing uploadFiles IMLEMENT 333  ===");
+                String objectName = destination + file.getOriginalFilename();
+                logger.info("=== objectName: {}   ===", objectName);
+
+                minioClient.putObject(
+                        PutObjectArgs.builder()
+                                .bucket(bucket)
+                                .object(objectName)
+                                .stream(file.getInputStream(), file.getSize(), -1)
+                                .contentType(file.getContentType())
+                                .build()
+                );
+
+                uploadedObjects.add(MinioObject.builder()
+                        .name(file.getOriginalFilename())
+                        .path(objectName)
+                        .size(file.getSize())
+                        .isDirectory(false)
+                        .build());
+
+                logger.debug("Файл загружен: {}", objectName);
+            }
+
+            return uploadedObjects;
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage(), e);
         }
     }
 
@@ -65,8 +135,7 @@ public class MinioServiceImpl implements MinioService {
             );
             logger.debug("Объект удалён: {}", fullPath);
         } catch (Exception e) {
-            if (e instanceof ErrorResponseException) {
-                ErrorResponseException err = (ErrorResponseException) e;
+            if (e instanceof ErrorResponseException err) {
                 if ("NoSuchKey".equals(err.errorResponse().code())) {
                     throw new RuntimeException("Ресурс не найден: " + extractRelativePath(fullPath));
                 }
@@ -91,7 +160,7 @@ public class MinioServiceImpl implements MinioService {
             deleteObject(oldFullPath);
             logger.debug("Объект переименован: {} -> {}", oldFullPath, newFullPath);
         } catch (Exception e) {
-            throw MinioExceptionHandler.handleGenericException(e, oldFullPath + " -> " + newFullPath, "переименовании");
+            throw new RuntimeException(e.getMessage(), e);
         }
     }
 
@@ -119,67 +188,7 @@ public class MinioServiceImpl implements MinioService {
 
             return results;
         } catch (Exception e) {
-            throw MinioExceptionHandler.handleGenericException(e, userFolder, "поиске");
-        }
-    }
-
-    @Override
-    public List<MinioObject> uploadFiles(String destinationFullPath, MultipartFile[] files) {
-        List<MinioObject> uploadedObjects = new ArrayList<>();
-
-        try {
-            String destination = ensureTrailingSlash(destinationFullPath);
-
-            for (MultipartFile file : files) {
-                String objectName = destination + file.getOriginalFilename();
-
-                minioClient.putObject(
-                        PutObjectArgs.builder()
-                                .bucket(bucket)
-                                .object(objectName)
-                                .stream(file.getInputStream(), file.getSize(), -1)
-                                .contentType(file.getContentType())
-                                .build()
-                );
-
-                uploadedObjects.add(MinioObject.builder()
-                        .name(file.getOriginalFilename())
-                        .path(objectName)
-                        .size(file.getSize())
-                        .isDirectory(false)
-                        .build());
-
-                logger.debug("Файл загружен: {}", objectName);
-            }
-
-            return uploadedObjects;
-        } catch (Exception e) {
-            throw MinioExceptionHandler.handleGenericException(e, destinationFullPath, "загрузке файлов");
-        }
-    }
-
-    @Override
-    public void createFolder(String fullPath) {
-        try {
-            validateFolderCreation(fullPath);
-            createFolderInMinio(fullPath);
-            logger.debug("Папка создана: {}", fullPath);
-        } catch (Exception e) {
- 
-            // Преобразуем исключения в понятные RuntimeException
-            if (e instanceof IllegalStateException) {
-                throw new RuntimeException("Папка уже существует: " + extractRelativePath(fullPath));
-            } else if (e instanceof NoSuchElementException) {
-                throw new RuntimeException("Родительская папка не существует: " + getParentPath(fullPath));
-            } else if (e instanceof IllegalArgumentException) {
-                throw new RuntimeException("Невалидный путь: " + e.getMessage());
-            } else if (e instanceof ErrorResponseException) {
-                ErrorResponseException err = (ErrorResponseException) e;
-                if ("NoSuchKey".equals(err.errorResponse().code())) {
-                    throw new RuntimeException("Ресурс не найден: " + extractRelativePath(fullPath));
-                }
-            }
-            throw new RuntimeException("Ошибка при создании папки: " + e.getMessage(), e);
+            throw new RuntimeException(e.getMessage(), e);
         }
     }
 
@@ -195,7 +204,7 @@ public class MinioServiceImpl implements MinioService {
                             .build()
             );
         } catch (Exception e) {
-            throw MinioExceptionHandler.handleGenericException(e, fullPath, "получении ссылки");
+            throw new RuntimeException(e.getMessage(), e);
         }
     }
 
@@ -213,9 +222,9 @@ public class MinioServiceImpl implements MinioService {
             if ("NoSuchKey".equals(e.errorResponse().code())) {
                 return false;
             }
-            throw MinioExceptionHandler.handleGenericException(e, fullPath, "проверка существования");
+            throw new RuntimeException(e.getMessage(), e);
         } catch (Exception e) {
-            throw MinioExceptionHandler.handleGenericException(e, fullPath, "проверка существования");
+            throw new RuntimeException(e.getMessage(), e);
         }
     }
 
@@ -281,7 +290,7 @@ public class MinioServiceImpl implements MinioService {
         }
     }
 
-    private  void createFolderInMinio(String fullPath) throws Exception {
+    private void createFolderInMinio(String fullPath) throws Exception {
         minioClient.putObject(
                 PutObjectArgs.builder()
                         .bucket(bucket)

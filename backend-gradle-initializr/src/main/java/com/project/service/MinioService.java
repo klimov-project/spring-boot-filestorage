@@ -6,10 +6,14 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 public interface MinioService {
+    void createFolder(String fullPath);
+    List<MinioObject> listObjects(String fullPath);
+    List<MinioObject> uploadFiles(String destinationFullPath, MultipartFile[] files);
+
+
 
     String getBucketName();
 
-    List<MinioObject> listObjects(String fullPath);
 
     void deleteObject(String fullPath);
 
@@ -17,9 +21,6 @@ public interface MinioService {
 
     List<MinioObject> searchFiles(String userFolder, String query);
 
-    List<MinioObject> uploadFiles(String destinationFullPath, MultipartFile[] files);
-
-    void createFolder(String fullPath);
 
     String getDownloadUrl(String fullPath);
 

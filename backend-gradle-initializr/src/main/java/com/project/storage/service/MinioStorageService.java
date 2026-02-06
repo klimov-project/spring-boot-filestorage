@@ -1,20 +1,23 @@
 package com.project.storage.service;
 
+import com.project.exception.StorageException;
 import com.project.entity.MinioObject;
 import com.project.service.MinioService;
 import com.project.service.StorageService;
 import com.project.storage.dto.ResourceInfo;
-import com.project.storage.exception.StorageException;
 import com.project.storage.model.ResourceType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class MinioStorageService implements StorageService {
 
+    private static final Logger logger = LoggerFactory.getLogger(MinioStorageService.class);
     private final MinioService minioService;
 
     public MinioStorageService(MinioService minioService) {
@@ -27,7 +30,12 @@ public class MinioStorageService implements StorageService {
         try {
             minioService.createFolder(userRootFolder);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to create user directory for user " + userId, e);
+            throw new StorageException.StorageOperationException(
+                    "Failed to create user directory for user " + userId + ": " + e.getMessage(),
+                    userId,
+                    "/",
+                    "createUserDirectory"
+            );
         }
     }
 
@@ -37,7 +45,10 @@ public class MinioStorageService implements StorageService {
 
         if (relativePath == null || relativePath.trim().isEmpty()) {
             throw new StorageException.InvalidPathException(
-                    "Путь не может быть пустым", userId, relativePath
+                    "Путь не может быть пустым",
+                    userId,
+                    relativePath,
+                    "createDirectory"
             );
         }
 
@@ -52,33 +63,14 @@ public class MinioStorageService implements StorageService {
             minioService.createFolder(fullPath);
             return getResourceInfo(userId, relativePath);
         } catch (RuntimeException e) {
-            // Преобразуем исключения MinioService
-            String errorMsg = e.getMessage();
-            if (errorMsg != null) {
-                if (errorMsg.contains("Папка уже существует")) {
-                    throw new StorageException.ResourceAlreadyExistsException(
-                            "Папка уже существует: " + relativePath, userId, relativePath
-                    );
-                } else if (errorMsg.contains("Родительская папка не существует")) {
-                    throw new StorageException.ResourceNotFoundException(
-                            "Родительская папка не существует: " + getParentPath(relativePath),
-                            userId, getParentPath(relativePath)
-                    );
-                } else if (errorMsg.contains("Невалидный путь")) {
-                    throw new StorageException.InvalidPathException(
-                            "Невалидный путь: " + relativePath, userId, relativePath
-                    );
-                }
-            }
-            throw new RuntimeException("Ошибка при создании папки: " + e.getMessage(), e);
+            handleMinioException(e, userId, relativePath, "createDirectory");
+            return null; // Never reached
         }
     }
 
     @Override
     public ResourceInfo getResourceInfo(Long userId, String relativePath) {
         validatePath(relativePath);
-
-        String fullPath = getFullPath(userId, relativePath);
 
         // Обработка корневой директории
         if ("/".equals(relativePath) || relativePath == null || relativePath.isEmpty()) {
@@ -90,18 +82,40 @@ public class MinioStorageService implements StorageService {
                     .build();
         }
 
+        String fullPath = getFullPath(userId, relativePath);
+
         try {
             MinioObject object = minioService.getObjectInfo(fullPath);
             return convertToResourceInfo(userId, object);
         } catch (RuntimeException e) {
-            String errorMsg = e.getMessage();
-            if (errorMsg != null && (errorMsg.contains("Ресурс не найден")
-                    || errorMsg.contains("NoSuchKey"))) {
-                throw new StorageException.ResourceNotFoundException(
-                        "Ресурс не найден: " + relativePath, userId, relativePath
-                );
-            }
-            throw new RuntimeException("Ошибка при получении информации о ресурсе: " + e.getMessage(), e);
+            handleMinioException(e, userId, relativePath, "getResourceInfo");
+            return null; // Never reached
+        }
+    }
+
+    @Override
+    public List<ResourceInfo> uploadFiles(Long userId, String destinationRelativePath, MultipartFile[] files) {
+        validatePath(destinationRelativePath);
+
+        if (files == null || files.length == 0) {
+            throw new StorageException.InvalidPathException(
+                    "Не указаны файлы для загрузки",
+                    userId,
+                    destinationRelativePath,
+                    "uploadFiles"
+            );
+        }
+
+        String destinationFullPath = getFullPath(userId, destinationRelativePath);
+
+        try {
+            List<MinioObject> uploaded = minioService.uploadFiles(destinationFullPath, files);
+            return uploaded.stream()
+                    .map(obj -> convertToResourceInfo(userId, obj))
+                    .collect(Collectors.toList());
+        } catch (RuntimeException e) {
+            handleMinioException(e, userId, destinationRelativePath, "uploadFiles");
+            return null; // Never reached
         }
     }
 
@@ -116,14 +130,7 @@ public class MinioStorageService implements StorageService {
             minioService.getObjectInfo(fullPath);
             minioService.deleteObject(fullPath);
         } catch (RuntimeException e) {
-            String errorMsg = e.getMessage();
-            if (errorMsg != null && (errorMsg.contains("Ресурс не найден")
-                    || errorMsg.contains("NoSuchKey"))) {
-                throw new StorageException.ResourceNotFoundException(
-                        "Ресурс не найден: " + relativePath, userId, relativePath
-                );
-            }
-            throw new RuntimeException("Ошибка при удалении ресурса: " + e.getMessage(), e);
+            handleMinioException(e, userId, relativePath, "deleteResource");
         }
     }
 
@@ -143,24 +150,26 @@ public class MinioStorageService implements StorageService {
             try {
                 minioService.getObjectInfo(toFullPath);
                 throw new StorageException.ResourceAlreadyExistsException(
-                        "Ресурс уже существует: " + toRelativePath, userId, toRelativePath
+                        "Ресурс уже существует: " + toRelativePath,
+                        userId,
+                        toRelativePath,
+                        "moveResource"
                 );
             } catch (RuntimeException ex) {
                 // Ресурс не существует - можно продолжать
+                if (!isNotFoundException(ex)) {
+                    // Если это не "не найден", значит другая ошибка
+                    handleMinioException(ex, userId, toRelativePath, "moveResource");
+                }
             }
 
             minioService.renameObject(fromFullPath, toFullPath);
             return getResourceInfo(userId, toRelativePath);
-        } catch (StorageException.ResourceAlreadyExistsException ex) {
+        } catch (StorageException ex) {
             throw ex; // Пробрасываем как есть
         } catch (RuntimeException e) {
-            String errorMsg = e.getMessage();
-            if (errorMsg != null && errorMsg.contains("Ресурс не найден")) {
-                throw new StorageException.ResourceNotFoundException(
-                        "Ресурс не найден: " + fromRelativePath, userId, fromRelativePath
-                );
-            }
-            throw new RuntimeException("Ошибка при перемещении ресурса: " + e.getMessage(), e);
+            handleMinioException(e, userId, fromRelativePath, "moveResource");
+            return null; // Never reached
         }
     }
 
@@ -168,44 +177,26 @@ public class MinioStorageService implements StorageService {
     public List<ResourceInfo> searchResources(Long userId, String query) {
         if (query == null || query.trim().isEmpty()) {
             throw new StorageException.InvalidPathException(
-                    "Поисковый запрос не может быть пустым", userId, null
+                    "Поисковый запрос не может быть пустым",
+                    userId,
+                    null,
+                    "searchResources"
             );
         }
 
         String userFolder = getUserFolderPath(userId);
-        List<MinioObject> results = minioService.searchFiles(userFolder, query);
-
-        return results.stream()
-                .map(obj -> convertToResourceInfo(userId, obj))
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public List<ResourceInfo> uploadFiles(Long userId, String destinationRelativePath, MultipartFile[] files) {
-        validatePath(destinationRelativePath);
-
-        if (files == null || files.length == 0) {
-            throw new StorageException.InvalidPathException(
-                    "Не указаны файлы для загрузки", userId, destinationRelativePath
-            );
-        }
-
-        String destinationFullPath = getFullPath(userId, destinationRelativePath);
-
         try {
-            List<MinioObject> uploaded = minioService.uploadFiles(destinationFullPath, files);
-            return uploaded.stream()
+            List<MinioObject> results = minioService.searchFiles(userFolder, query);
+            return results.stream()
                     .map(obj -> convertToResourceInfo(userId, obj))
                     .collect(Collectors.toList());
         } catch (RuntimeException e) {
-            String errorMsg = e.getMessage();
-            if (errorMsg != null && (errorMsg.contains("уже существует")
-                    || errorMsg.contains("CONFLICT"))) {
-                throw new StorageException.ResourceAlreadyExistsException(
-                        "Файл уже существует в папке назначения", userId, destinationRelativePath
-                );
-            }
-            throw new RuntimeException("Ошибка при загрузке файлов: " + e.getMessage(), e);
+            throw new StorageException.StorageOperationException(
+                    "Ошибка при поиске: " + e.getMessage(),
+                    userId,
+                    null,
+                    "searchResources"
+            );
         }
     }
 
@@ -221,18 +212,57 @@ public class MinioStorageService implements StorageService {
                     .map(obj -> convertToResourceInfo(userId, obj))
                     .collect(Collectors.toList());
         } catch (RuntimeException e) {
-            String errorMsg = e.getMessage();
-            if (errorMsg != null && (errorMsg.contains("Ресурс не найден")
-                    || errorMsg.contains("NoSuchKey"))) {
-                throw new StorageException.ResourceNotFoundException(
-                        "Папка не существует: " + relativePath, userId, relativePath
-                );
-            }
-            throw new RuntimeException("Ошибка при получении содержимого папки: " + e.getMessage(), e);
+            handleMinioException(e, userId, relativePath, "getDirectoryContents");
+            return null; // Never reached
         }
     }
 
-    // ============= ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ =============
+    // ============= ОБРАБОТКА ИСКЛЮЧЕНИЙ =============
+    private void handleMinioException(RuntimeException e, Long userId, String relativePath, String operation) {
+        String errorMsg = e.getMessage();
+
+        logger.error("Minio exception during {} for user {}: {}", operation, userId, errorMsg, e);
+
+        if (errorMsg != null) {
+            // Проверяем известные шаблоны ошибок
+            if (errorMsg.contains("Папка уже существует")
+                    || errorMsg.contains("уже существует")
+                    || errorMsg.contains("CONFLICT")) {
+                throw new StorageException.ResourceAlreadyExistsException(
+                        errorMsg, userId, relativePath, operation
+                );
+            } else if (errorMsg.contains("Родительская папка не существует")
+                    || errorMsg.contains("Ресурс не найден")
+                    || errorMsg.contains("NoSuchKey")
+                    || errorMsg.contains("Not Found")) {
+                throw new StorageException.ResourceNotFoundException(
+                        errorMsg, userId, relativePath, operation
+                );
+            } else if (errorMsg.contains("Невалидный путь")
+                    || errorMsg.contains("Invalid path")) {
+                throw new StorageException.InvalidPathException(
+                        errorMsg, userId, relativePath, operation
+                );
+            }
+        }
+
+        // Если не распознали - бросаем общую ошибку операции
+        throw new StorageException.StorageOperationException(
+                "Ошибка при выполнении операции '" + operation + "': " + e.getMessage(),
+                userId,
+                relativePath,
+                operation
+        );
+    }
+
+    private boolean isNotFoundException(RuntimeException e) {
+        String errorMsg = e.getMessage();
+        return errorMsg != null && (errorMsg.contains("Ресурс не найден")
+                || errorMsg.contains("NoSuchKey")
+                || errorMsg.contains("Not Found"));
+    }
+
+    // ============= ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ (остаются без изменений) =============
     private void validatePath(String path) {
         if (path == null) {
             return;
@@ -240,7 +270,10 @@ public class MinioStorageService implements StorageService {
 
         if (path.contains("..")) {
             throw new StorageException.InvalidPathException(
-                    "Путь содержит недопустимые символы '..'", null, path
+                    "Путь содержит недопустимые символы '..'",
+                    null,
+                    path,
+                    "validatePath"
             );
         }
     }

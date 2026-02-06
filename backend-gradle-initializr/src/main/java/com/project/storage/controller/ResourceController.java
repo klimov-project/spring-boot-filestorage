@@ -23,11 +23,11 @@ public class ResourceController {
 
     private static final Logger logger = LoggerFactory.getLogger(ResourceController.class);
 
-    private final StorageService storageService;
+    private final StorageService StorageService;
     private final PathValidator pathValidator;
 
-    public ResourceController(StorageService storageService, PathValidator pathValidator) {
-        this.storageService = storageService;
+    public ResourceController(StorageService StorageService, PathValidator pathValidator) {
+        this.StorageService = StorageService;
         this.pathValidator = pathValidator;
     }
 
@@ -49,7 +49,7 @@ public class ResourceController {
             validatePath(path);
             logger.debug("Path validation passed for: {}", path);
 
-            ResourceInfo info = storageService.getResourceInfo(user.getId(), path);
+            ResourceInfo info = StorageService.getResourceInfo(user.getId(), path);
 
             logger.info("Resource info retrieved successfully for user {}: {}",
                     user.getId(), path);
@@ -86,7 +86,7 @@ public class ResourceController {
                 return authCheck;
             }
             validatePath(path);
-            storageService.deleteResource(user.getId(), path);
+            StorageService.deleteResource(user.getId(), path);
 
             logger.info("User {} successfully deleted resource: {}",
                     user.getId(), path);
@@ -127,7 +127,7 @@ public class ResourceController {
             validatePath(from);
             validatePath(to);
 
-            ResourceInfo movedResource = storageService.moveResource(user.getId(), from, to);
+            ResourceInfo movedResource = StorageService.moveResource(user.getId(), from, to);
 
             logger.info("User {} successfully moved resource from {} to {}",
                     user.getId(), from, to);
@@ -169,7 +169,7 @@ public class ResourceController {
                 return ResponseEntity.badRequest().body("Search query is required");
             }
 
-            List<ResourceInfo> results = storageService.searchResources(user.getId(), query);
+            List<ResourceInfo> results = StorageService.searchResources(user.getId(), query);
 
             logger.info("User {} found {} results for query: {}",
                     user.getId(), results.size(), query);
@@ -202,7 +202,7 @@ public class ResourceController {
                 return ResponseEntity.badRequest().body("No files provided");
             }
 
-            List<ResourceInfo> uploaded = storageService.uploadFiles(user.getId(), path, files);
+            List<ResourceInfo> uploaded = StorageService.uploadFiles(user.getId(), path, files);
 
             logger.info("User {} successfully uploaded {} files to path: {}",
                     user.getId(), uploaded.size(), path);
@@ -235,7 +235,7 @@ public class ResourceController {
 
         try {
             validatePath(path);
-            List<ResourceInfo> contents = storageService.getDirectoryContents(user.getId(), path);
+            List<ResourceInfo> contents = StorageService.getDirectoryContents(user.getId(), path);
 
             logger.info("User {} retrieved {} items from directory: {}",
                     user.getId(), contents.size(), path);
@@ -266,7 +266,7 @@ public class ResourceController {
 
         logger.info("User {} requested POST /directory with path: {}", user.getId(), path);
 
-        ResourceInfo created = storageService.createDirectory(user.getId(), path);
+        ResourceInfo created = StorageService.createDirectory(user.getId(), path);
 
         logger.info("User {} successfully created directory: {}", user.getId(), path);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
