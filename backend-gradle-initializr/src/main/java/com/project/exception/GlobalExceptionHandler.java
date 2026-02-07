@@ -1,7 +1,6 @@
 package com.project.exception;
 
 import com.project.dto.response.ErrorResponse;
-import com.project.exception.StorageException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -46,7 +45,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(ex.getStatusCode())
                 .body(new ErrorResponse(ex.getReason()));
-    } 
+    }
 
     @ExceptionHandler(UsernameExistsException.class)
     public ResponseEntity<ErrorResponse> handleUsernameExists(UsernameExistsException ex) {
@@ -72,7 +71,6 @@ public class GlobalExceptionHandler {
     /**
      * Обработка исключений StorageException
      */
-    
     @ExceptionHandler(StorageException.ResourceAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleResourceAlreadyExists(StorageException.ResourceAlreadyExistsException ex) {
         return ResponseEntity
@@ -101,8 +99,9 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleAllExceptions(Exception ex) {
         System.out.println("=== Unhandled Exception ===");
         ex.printStackTrace(); // Лучше использовать logger
+
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ErrorResponse("Внутренняя ошибка сервера"));
+                .body(new ErrorResponse("Внутренняя ошибка сервера: " + ex.getMessage()));
     }
 }

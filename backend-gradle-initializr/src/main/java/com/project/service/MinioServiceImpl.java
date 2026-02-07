@@ -1,6 +1,7 @@
 package com.project.service;
 
 import com.project.entity.MinioObject;
+import com.project.exception.StorageException;
 import io.minio.*;
 import io.minio.errors.*;
 import io.minio.http.Method;
@@ -65,28 +66,13 @@ public class MinioServiceImpl implements MinioService {
             createFolderInMinio(fullPath);
             logger.debug("Папка создана: {}", fullPath);
         } catch (Exception e) {
-
-            // Преобразуем исключения в понятные RuntimeException
-            if (e instanceof IllegalStateException) {
-                throw new RuntimeException("Папка уже существует: " + extractRelativePath(fullPath));
-            } else if (e instanceof NoSuchElementException) {
-                throw new RuntimeException("Родительская папка не существует: " + getParentPath(fullPath));
-            } else if (e instanceof IllegalArgumentException) {
-                throw new RuntimeException("Невалидный путь: " + e.getMessage());
-            } else if (e instanceof ErrorResponseException) {
-                ErrorResponseException err = (ErrorResponseException) e;
-                if ("NoSuchKey".equals(err.errorResponse().code())) {
-                    throw new RuntimeException("Ресурс не найден: " + extractRelativePath(fullPath));
-                }
-            }
-            throw new RuntimeException("Ошибка при создании папки: " + e.getMessage(), e);
+            throw new RuntimeException(e.getMessage(), e);
         }
     }
 
     @Override
     public List<MinioObject> uploadFiles(String destinationFullPath, MultipartFile[] files) {
         logger.info("=== Initializing uploadFiles IMLEMENT   ===");
-        logger.info("=== files: {}   ===", files);
         List<MinioObject> uploadedObjects = new ArrayList<>();
 
         try {
@@ -97,16 +83,10 @@ public class MinioServiceImpl implements MinioService {
             for (MultipartFile file : files) {
                 logger.info("=== Initializing uploadFiles IMLEMENT 333  ===");
                 String objectName = destination + file.getOriginalFilename();
+                validateFileCreation(objectName);
                 logger.info("=== objectName: {}   ===", objectName);
 
-                minioClient.putObject(
-                        PutObjectArgs.builder()
-                                .bucket(bucket)
-                                .object(objectName)
-                                .stream(file.getInputStream(), file.getSize(), -1)
-                                .contentType(file.getContentType())
-                                .build()
-                );
+                createFileInMinio(objectName, file);
 
                 uploadedObjects.add(MinioObject.builder()
                         .name(file.getOriginalFilename())
@@ -114,7 +94,6 @@ public class MinioServiceImpl implements MinioService {
                         .size(file.getSize())
                         .isDirectory(false)
                         .build());
-
                 logger.debug("Файл загружен: {}", objectName);
             }
 
@@ -262,14 +241,51 @@ public class MinioServiceImpl implements MinioService {
 
     // ============= ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ =============
     private void validateFolderCreation(String fullPath) throws Exception {
+        logger.info("=== Initializing validateFolderCreation ===");
+        logger.info("  fullPath: {}  ", fullPath);
         // Удаляем завершающий слеш если есть
         String normalizedPath = fullPath.endsWith("/")
                 ? fullPath.substring(0, fullPath.length() - 1)
                 : fullPath;
 
+        logger.info("  normalizedPath: {}  ", normalizedPath);
         // Проверка существования папки
         if (objectExists(normalizedPath + "/")) {
-            throw new IllegalStateException("Папка уже существует");
+            logger.info(" ==  Path already exists 454545 {}", normalizedPath);
+            throw new RuntimeException("Path already exists 454545 : " + normalizedPath);
+        }
+
+        // Проверка родительской папки
+        if (fullPath.contains("/")) {
+            // Находим последний слеш
+            int lastSlashIndex = normalizedPath.lastIndexOf('/');
+            if (lastSlashIndex > 0) {
+                // Берем путь до последнего слеша 
+                String parentPath = normalizedPath.substring(0, lastSlashIndex);
+
+                if (!parentPath.isEmpty()) {
+                    String parentObjectName = ensureTrailingSlash(parentPath);
+                    if (!objectExists(parentObjectName)) {
+                        throw new NoSuchElementException("Родительская папка не существует");
+                    }
+                }
+            }
+        }
+    }
+
+    private void validateFileCreation(String fullPath) throws Exception {
+        logger.info("=== Initializing validateFileCreation ===");
+        logger.info("  fullPath: {}  ", fullPath);
+        // Удаляем завершающий слеш если есть
+        String normalizedPath = fullPath.endsWith("/")
+                ? fullPath.substring(0, fullPath.length() - 1)
+                : fullPath;
+
+        logger.info("  normalizedPath: {}  ", normalizedPath);
+        // Проверка существования файла
+        if (objectExists(normalizedPath)) {
+            logger.info(" ==  File already exists 77777 {}", normalizedPath);
+            throw new RuntimeException("File already exists 77777 : " + normalizedPath);
         }
 
         // Проверка родительской папки
@@ -296,6 +312,17 @@ public class MinioServiceImpl implements MinioService {
                         .bucket(bucket)
                         .object(fullPath)
                         .stream(new ByteArrayInputStream(new byte[0]), 0, -1)
+                        .build()
+        );
+    }
+
+    private void createFileInMinio(String objectName, MultipartFile file) throws Exception {
+        minioClient.putObject(
+                PutObjectArgs.builder()
+                        .bucket(bucket)
+                        .object(objectName)
+                        .stream(file.getInputStream(), file.getSize(), -1)
+                        .contentType(file.getContentType())
                         .build()
         );
     }

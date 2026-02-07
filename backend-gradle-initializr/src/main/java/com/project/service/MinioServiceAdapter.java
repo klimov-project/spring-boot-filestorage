@@ -1,0 +1,442 @@
+package com.project.service;
+
+import com.project.exception.StorageException;
+import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+@Component
+public class MinioServiceAdapter {
+
+    private static final Logger logger = LoggerFactory.getLogger(MinioServiceAdapter.class);
+
+    private final MinioService minioService;
+
+    public MinioServiceAdapter(MinioService minioService) {
+        this.minioService = minioService;
+    }
+
+    // ============= АДАПТЕРЫ ДЛЯ МЕТОДОВ MINIOSERVICE =============
+    /**
+     * Создание папки с преобразованием исключений
+     */
+    public void createFolder(Long userId, String relativePath) {
+        String fullPath = toFullPath(userId, relativePath);
+        logger.debug("Creating folder - userId: {}, relativePath: {}, fullPath: {}",
+                userId, relativePath, fullPath);
+
+        try {
+            minioService.createFolder(fullPath);
+        } catch (Exception e) {
+            throw transformCreateFolderException(e, userId, relativePath);
+        }
+    }
+
+    /**
+     * Получение информации об объекте с преобразованием исключений
+     */
+    public com.project.entity.MinioObject getObjectInfo(Long userId, String relativePath) {
+        String fullPath = toFullPath(userId, relativePath);
+
+        try {
+            return minioService.getObjectInfo(fullPath);
+        } catch (Exception e) {
+            throw transformGetObjectInfoException(e, userId, relativePath);
+        }
+    }
+
+    /**
+     * Загрузка файлов с преобразованием исключений
+     */
+    public java.util.List<com.project.entity.MinioObject> uploadFiles(
+            Long userId,
+            String destinationRelativePath,
+            org.springframework.web.multipart.MultipartFile[] files) {
+
+        String destinationFullPath = toFullPath(userId, destinationRelativePath);
+
+        try {
+            return minioService.uploadFiles(destinationFullPath, files);
+        } catch (Exception e) {
+            throw transformUploadFilesException(e, userId, destinationRelativePath);
+        }
+    }
+
+    /**
+     * Удаление объекта с преобразованием исключений
+     */
+    public void deleteObject(Long userId, String relativePath) {
+        String fullPath = toFullPath(userId, relativePath);
+
+        try {
+            minioService.deleteObject(fullPath);
+        } catch (Exception e) {
+            throw transformDeleteObjectException(e, userId, relativePath);
+        }
+    }
+
+    /**
+     * Переименование объекта с преобразованием исключений
+     */
+    public void renameObject(Long userId, String fromRelativePath, String toRelativePath) {
+        String fromFullPath = toFullPath(userId, fromRelativePath);
+        String toFullPath = toFullPath(userId, toRelativePath);
+
+        try {
+            minioService.renameObject(fromFullPath, toFullPath);
+        } catch (Exception e) {
+            throw transformRenameObjectException(e, userId, fromRelativePath, toRelativePath);
+        }
+    }
+
+    /**
+     * Поиск файлов с преобразованием исключений
+     */
+    public java.util.List<com.project.entity.MinioObject> searchFiles(
+            Long userId,
+            String query) {
+
+        String userFolder = "user-" + userId + "-files";
+
+        try {
+            return minioService.searchFiles(userFolder, query);
+        } catch (Exception e) {
+            throw transformSearchFilesException(e, userId, query);
+        }
+    }
+
+    /**
+     * Получение списка объектов с преобразованием исключений
+     */
+    public java.util.List<com.project.entity.MinioObject> listObjects(
+            Long userId,
+            String relativePath) {
+
+        String fullPath = toFullPath(userId, relativePath);
+
+        try {
+            return minioService.listObjects(fullPath);
+        } catch (Exception e) {
+            throw transformListObjectsException(e, userId, relativePath);
+        }
+    }
+
+    /**
+     * Проверка существования объекта с преобразованием исключений
+     */
+    public boolean objectExists(Long userId, String relativePath) {
+        String fullPath = toFullPath(userId, relativePath);
+
+        try {
+            return minioService.objectExists(fullPath);
+        } catch (Exception e) {
+            throw transformObjectExistsException(e, userId, relativePath);
+        }
+    }
+
+    /**
+     * Получение URL для скачивания с преобразованием исключений
+     */
+    public String getDownloadUrl(Long userId, String relativePath) {
+        String fullPath = toFullPath(userId, relativePath);
+
+        try {
+            return minioService.getDownloadUrl(fullPath);
+        } catch (Exception e) {
+            throw transformGetDownloadUrlException(e, userId, relativePath);
+        }
+    }
+
+    // ============= ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ =============
+    /**
+     * Преобразование относительного пути в полный
+     */
+    private String toFullPath(Long userId, String relativePath) {
+        String userPrefix = "user-" + userId + "-files/";
+
+        if (relativePath == null || relativePath.isEmpty() || "/".equals(relativePath)) {
+            return userPrefix;
+        }
+
+        String cleanPath = relativePath.startsWith("/")
+                ? relativePath.substring(1)
+                : relativePath;
+
+        return userPrefix + cleanPath;
+    }
+
+    /**
+     * Извлечение относительного пути из полного
+     */
+    private String toRelativePath(Long userId, String fullPath) {
+        String userPrefix = "user-" + userId + "-files/";
+
+        if (fullPath.startsWith(userPrefix)) {
+            return fullPath.substring(userPrefix.length());
+        }
+        return fullPath;
+    }
+
+    /**
+     * Извлечение родительского пути
+     */
+    private String extractParentPath(String path) {
+        if (path == null || path.isEmpty() || "/".equals(path)) {
+            return "/";
+        }
+
+        String cleanPath = path.endsWith("/")
+                ? path.substring(0, path.length() - 1)
+                : path;
+
+        int lastSlash = cleanPath.lastIndexOf('/');
+        if (lastSlash <= 0) {
+            return "/";
+        }
+
+        return cleanPath.substring(0, lastSlash);
+    }
+
+    /**
+     * Извлечение имени из пути
+     */
+    private String extractNameFromPath(String path) {
+        if (path == null || path.isEmpty()) {
+            return "";
+        }
+
+        if (path.endsWith("/")) {
+            path = path.substring(0, path.length() - 1);
+        }
+
+        int lastSlash = path.lastIndexOf('/');
+        return lastSlash != -1 ? path.substring(lastSlash + 1) : path;
+    }
+
+    // ============= ТРАНСФОРМАЦИЯ ИСКЛЮЧЕНИЙ =============
+    private RuntimeException transformCreateFolderException(
+            Exception e, Long userId, String relativePath) {
+
+        String errorMessage = e.getMessage();
+        logger.debug("Transform createFolder exception: {}", errorMessage);
+
+        if (errorMessage != null) {
+            if (errorMessage.contains("Папка уже существует")
+                    || errorMessage.contains("Path already exists")) {
+                return new StorageException.ResourceAlreadyExistsException(
+                        "Папка уже существует: " + relativePath,
+                        userId,
+                        relativePath,
+                        "createFolder"
+                );
+            } else if (errorMessage.contains("Родительская папка не существует")) {
+                String parentPath = extractParentPath(relativePath);
+                return new StorageException.ResourceNotFoundException(
+                        "Родительская папка не существует: " + parentPath,
+                        userId,
+                        parentPath,
+                        "createFolder"
+                );
+            } else if (errorMessage.contains("Невалидный путь")) {
+                return new StorageException.InvalidPathException(
+                        "Невалидный путь: " + relativePath,
+                        userId,
+                        relativePath,
+                        "createFolder"
+                );
+            }
+        }
+
+        return new StorageException.StorageOperationException(
+                "Ошибка при создании папки: " + e.getMessage(),
+                userId,
+                relativePath,
+                "createFolder"
+        );
+    }
+
+    private RuntimeException transformUploadFilesException(
+            Exception e, Long userId, String relativePath) {
+
+        String errorMessage = e.getMessage();
+        logger.debug("Transform uploadFiles exception: {}", errorMessage);
+
+        if (errorMessage != null && errorMessage.contains("File already exists")) {
+            return new StorageException.ResourceAlreadyExistsException(
+                    "Файл уже существует в папке назначения: " + relativePath,
+                    userId,
+                    relativePath,
+                    "uploadFiles"
+            );
+        }
+
+        return new StorageException.StorageOperationException(
+                "Ошибка при загрузке файлов: " + e.getMessage(),
+                userId,
+                relativePath,
+                "uploadFiles"
+        );
+    }
+
+    private RuntimeException transformGetObjectInfoException(
+            Exception e, Long userId, String relativePath) {
+
+        String errorMessage = e.getMessage();
+        logger.debug("Transform getObjectInfo exception: {}", errorMessage);
+
+        if (errorMessage != null && (errorMessage.contains("Ресурс не найден")
+                || errorMessage.contains("NoSuchKey")
+                || errorMessage.contains("Not Found"))) {
+
+            return new StorageException.ResourceNotFoundException(
+                    "Ресурс не найден: " + relativePath,
+                    userId,
+                    relativePath,
+                    "getObjectInfo"
+            );
+        }
+
+        return new StorageException.StorageOperationException(
+                "Ошибка при получении информации о ресурсе: " + e.getMessage(),
+                userId,
+                relativePath,
+                "getObjectInfo"
+        );
+    }
+
+    private RuntimeException transformDeleteObjectException(
+            Exception e, Long userId, String relativePath) {
+
+        String errorMessage = e.getMessage();
+        logger.debug("Transform deleteObject exception: {}", errorMessage);
+
+        if (errorMessage != null && (errorMessage.contains("Ресурс не найден")
+                || errorMessage.contains("NoSuchKey"))) {
+
+            return new StorageException.ResourceNotFoundException(
+                    "Ресурс не найден: " + relativePath,
+                    userId,
+                    relativePath,
+                    "deleteObject"
+            );
+        }
+
+        return new StorageException.StorageOperationException(
+                "Ошибка при удалении ресурса: " + e.getMessage(),
+                userId,
+                relativePath,
+                "deleteObject"
+        );
+    }
+
+    private RuntimeException transformRenameObjectException(
+            Exception e, Long userId, String fromRelativePath, String toRelativePath) {
+
+        String errorMessage = e.getMessage();
+        logger.debug("Transform renameObject exception: {}", errorMessage);
+
+        if (errorMessage != null && (errorMessage.contains("Ресурс не найден")
+                || errorMessage.contains("NoSuchKey"))) {
+
+            return new StorageException.ResourceNotFoundException(
+                    "Ресурс не найден: " + fromRelativePath,
+                    userId,
+                    fromRelativePath,
+                    "renameObject"
+            );
+        } else if (errorMessage != null && errorMessage.contains("уже существует")) {
+            return new StorageException.ResourceAlreadyExistsException(
+                    "Ресурс уже существует: " + toRelativePath,
+                    userId,
+                    toRelativePath,
+                    "renameObject"
+            );
+        }
+
+        return new StorageException.StorageOperationException(
+                "Ошибка при перемещении ресурса: " + e.getMessage(),
+                userId,
+                fromRelativePath,
+                "renameObject"
+        );
+    }
+
+    private RuntimeException transformSearchFilesException(
+            Exception e, Long userId, String query) {
+
+        return new StorageException.StorageOperationException(
+                "Ошибка при поиске файлов: " + e.getMessage(),
+                userId,
+                null,
+                "searchFiles"
+        );
+    }
+
+    private RuntimeException transformListObjectsException(
+            Exception e, Long userId, String relativePath) {
+
+        String errorMessage = e.getMessage();
+        logger.debug("Transform listObjects exception: {}", errorMessage);
+
+        if (errorMessage != null && (errorMessage.contains("Ресурс не найден")
+                || errorMessage.contains("NoSuchKey"))) {
+
+            return new StorageException.ResourceNotFoundException(
+                    "Папка не существует: " + relativePath,
+                    userId,
+                    relativePath,
+                    "listObjects"
+            );
+        }
+
+        return new StorageException.StorageOperationException(
+                "Ошибка при получении содержимого папки: " + e.getMessage(),
+                userId,
+                relativePath,
+                "listObjects"
+        );
+    }
+
+    private RuntimeException transformObjectExistsException(
+            Exception e, Long userId, String relativePath) {
+
+        return new StorageException.StorageOperationException(
+                "Ошибка при проверке существования объекта: " + e.getMessage(),
+                userId,
+                relativePath,
+                "objectExists"
+        );
+    }
+
+    private RuntimeException transformGetDownloadUrlException(
+            Exception e, Long userId, String relativePath) {
+
+        String errorMessage = e.getMessage();
+        logger.debug("Transform getDownloadUrl exception: {}", errorMessage);
+
+        if (errorMessage != null && (errorMessage.contains("Ресурс не найден")
+                || errorMessage.contains("NoSuchKey"))) {
+
+            return new StorageException.ResourceNotFoundException(
+                    "Ресурс не найден: " + relativePath,
+                    userId,
+                    relativePath,
+                    "getDownloadUrl"
+            );
+        }
+
+        return new StorageException.StorageOperationException(
+                "Ошибка при генерации ссылки для скачивания: " + e.getMessage(),
+                userId,
+                relativePath,
+                "getDownloadUrl"
+        );
+    }
+
+    /**
+     * Получение имени бакета (простая делегация)
+     */
+    public String getBucketName() {
+        return minioService.getBucketName();
+    }
+}

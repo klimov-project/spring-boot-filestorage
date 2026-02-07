@@ -3,6 +3,7 @@ package com.project.storage.controller;
 import com.project.entity.User;
 import com.project.storage.dto.ResourceInfo;
 import com.project.service.StorageService;
+import com.project.exception.StorageException;
 import com.project.storage.util.PathValidator;
 
 import org.slf4j.Logger;
@@ -54,11 +55,11 @@ public class ResourceController {
             logger.info("Resource info retrieved successfully for user {}: {}",
                     user.getId(), path);
             return ResponseEntity.ok(info);
-        } catch (StorageService.InvalidPathException e) {
+        } catch (StorageException.InvalidPathException e) {
             logger.warn("User {}: Invalid path: {} - {}",
                     user.getId(), path, e.getMessage());
             return ResponseEntity.badRequest().body("Invalid path: " + e.getMessage());
-        } catch (StorageService.ResourceNotFoundException e) {
+        } catch (StorageException.ResourceNotFoundException e) {
             logger.warn("User {}: Resource not found: {} - {}",
                     user.getId(), path, e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
@@ -91,11 +92,11 @@ public class ResourceController {
             logger.info("User {} successfully deleted resource: {}",
                     user.getId(), path);
             return ResponseEntity.noContent().build();
-        } catch (StorageService.InvalidPathException e) {
+        } catch (StorageException.InvalidPathException e) {
             logger.warn("User {}: Invalid path: {} - {}",
                     user.getId(), path, e.getMessage());
             return ResponseEntity.badRequest().body("Invalid path: " + e.getMessage());
-        } catch (StorageService.ResourceNotFoundException e) {
+        } catch (StorageException.ResourceNotFoundException e) {
             logger.warn("User {}: Resource not found: {} - {}",
                     user.getId(), path, e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
@@ -132,15 +133,15 @@ public class ResourceController {
             logger.info("User {} successfully moved resource from {} to {}",
                     user.getId(), from, to);
             return ResponseEntity.ok(movedResource);
-        } catch (StorageService.InvalidPathException e) {
+        } catch (StorageException.InvalidPathException e) {
             logger.warn("User {}: Invalid path: from={}, to={} - {}",
                     user.getId(), from, to, e.getMessage());
             return ResponseEntity.badRequest().body("Invalid path: " + e.getMessage());
-        } catch (StorageService.ResourceNotFoundException e) {
+        } catch (StorageException.ResourceNotFoundException e) {
             logger.warn("User {}: Resource not found: {} - {}",
                     user.getId(), from, e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        } catch (StorageService.ResourceAlreadyExistsException e) {
+        } catch (StorageException.ResourceAlreadyExistsException e) {
             logger.warn("User {}: Resource already exists: {} - {}",
                     user.getId(), to, e.getMessage());
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
@@ -194,33 +195,17 @@ public class ResourceController {
         logger.info("User {} requested POST /resource to path: {} with {} files",
                 user.getId(), path, files != null ? files.length : 0);
 
-        try {
-            validatePath(path);
-
-            if (files == null || files.length == 0) {
-                logger.warn("User {}: No files provided for upload", user.getId());
-                return ResponseEntity.badRequest().body("No files provided");
-            }
-
-            List<ResourceInfo> uploaded = StorageService.uploadFiles(user.getId(), path, files);
-
-            logger.info("User {} successfully uploaded {} files to path: {}",
-                    user.getId(), uploaded.size(), path);
-            return ResponseEntity.status(HttpStatus.CREATED).body(uploaded);
-        } catch (StorageService.InvalidPathException e) {
-            logger.warn("User {}: Invalid path: {} - {}",
-                    user.getId(), path, e.getMessage());
-            return ResponseEntity.badRequest().body("Invalid path: " + e.getMessage());
-        } catch (StorageService.ResourceAlreadyExistsException e) {
-            logger.warn("User {}: Resource already exists in path: {} - {}",
-                    user.getId(), path, e.getMessage());
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
-        } catch (Exception e) {
-            logger.error("Error uploading files for user {} to path {}: {}",
-                    user.getId(), path, e.getMessage(), e);
-            return ResponseEntity.internalServerError()
-                    .body("Error uploading files: " + e.getMessage());
+        if (files == null || files.length == 0) {
+            logger.warn("User {}: No files provided for upload", user.getId());
+            return ResponseEntity.badRequest().body("No files provided");
         }
+
+        List<ResourceInfo> uploaded = StorageService.uploadFiles(user.getId(), path, files);
+
+        logger.info("User {} successfully uploaded {} files to path: {}",
+                user.getId(), uploaded.size(), path);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(uploaded);
     }
 
     /**
@@ -240,11 +225,11 @@ public class ResourceController {
             logger.info("User {} retrieved {} items from directory: {}",
                     user.getId(), contents.size(), path);
             return ResponseEntity.ok(contents);
-        } catch (StorageService.InvalidPathException e) {
+        } catch (StorageException.InvalidPathException e) {
             logger.warn("User {}: Invalid path: {} - {}",
                     user.getId(), path, e.getMessage());
             return ResponseEntity.badRequest().body("Invalid path: " + e.getMessage());
-        } catch (StorageService.ResourceNotFoundException e) {
+        } catch (StorageException.ResourceNotFoundException e) {
             logger.warn("User {}: Directory not found: {} - {}",
                     user.getId(), path, e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
@@ -275,12 +260,12 @@ public class ResourceController {
     /**
      * Валидация пути
      */
-    private void validatePath(String path) throws StorageService.InvalidPathException {
+    private void validatePath(String path) throws StorageException.InvalidPathException {
         if (path == null || path.trim().isEmpty()) {
-            throw new StorageService.InvalidPathException("Path is null or empty");
+            throw new StorageException.InvalidPathException("Path is null or empty");
         }
         if (pathValidator.validateAndGetType(path) == null) {
-            throw new StorageService.InvalidPathException("Invalid path format: " + path);
+            throw new StorageException.InvalidPathException("Invalid path format: " + path);
         }
     }
 

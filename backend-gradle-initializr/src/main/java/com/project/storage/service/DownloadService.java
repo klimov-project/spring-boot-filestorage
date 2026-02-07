@@ -1,10 +1,6 @@
 package com.project.storage.service;
 
-// import com.project.service.StorageService;
-import com.project.exception.StorageException;
-
 import org.springframework.core.io.Resource;
-
 import java.io.IOException;
 
 public interface DownloadService {
@@ -12,10 +8,7 @@ public interface DownloadService {
     /**
      * Получение ресурса для скачивания
      */
-    DownloadResult getDownloadResource(Long userId, String path)
-            throws StorageException.ResourceNotFoundException,
-            StorageException.InvalidPathException,
-            IOException;
+    DownloadResult getDownloadResource(Long userId, String path) throws IOException;
 
     /**
      * Получение прямой ссылки для скачивания (опционально)
