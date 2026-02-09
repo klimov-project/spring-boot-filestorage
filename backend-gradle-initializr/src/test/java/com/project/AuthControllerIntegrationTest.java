@@ -1,6 +1,7 @@
 package com.project;
 
 import com.project.repository.UserRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,26 +11,30 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 
 /**
  * Integration tests for authentication endpoints.
  *
- * Test cases covered: 
- * 1) Duplicate registration -> 409 Conflict 
- * 2) Sign-in with wrong password -> 401 Unauthorized 
- * 3) Successful sign-up -> 201 Created and session cookie is set
+ * Test cases covered: 1) Duplicate registration -> 409 Conflict 2) Sign-in with
+ * wrong password -> 401 Unauthorized 3) Successful sign-up -> 201 Created and
+ * session cookie is set
  */
 @SpringBootTest
 public class AuthControllerIntegrationTest {
 
-    @Autowired
     private MockMvc mockMvc;
+    
+    @Autowired
+    private WebApplicationContext context;
 
     @Autowired
     private UserRepository userRepository;
-
+ 
     @BeforeEach
     public void setup() {
+        mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
         userRepository.deleteAll();
     }
 

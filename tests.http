@@ -28,9 +28,8 @@ Content-Type: {{contentType}}
   "password": "{{password}}"
 }
 
-### Получение профиля (требуется токен)
-# Предварительно выполните запрос login и скопируйте токен
-GET {{host_api}}/user/me 
+### Получение профиля
+GET {{host_api}}/user/me
 Content-Type: {{contentType}}
 
 
@@ -48,7 +47,7 @@ POST {{host_api}}/directory?path=test-folder/
 POST {{host_api}}/directory?path=test-folder/subfolder/
 
 ### Получение содержимого папки1
-GET {{host_api}}/directory?path=test-folder/
+GET {{host_api}}/directory?path=/
 
 ### Создание тестовой папки2 "test-download"
 POST {{host_api}}/directory?path=test-download/
@@ -58,11 +57,11 @@ POST {{host_api}}/resource?path=/
 Content-Type: multipart/form-data; boundary=boundarys
 
 --boundarys
-Content-Disposition: form-data; name="files"; filename="root-file.txt"
+Content-Disposition: form-data; name="files"; filename="root-file.txt" 
+Content-Type: text/plain
 
 This is test root-file.
 --boundarys--
-
 
 
 
@@ -73,7 +72,7 @@ GET {{host_api}}/resource/search?query=test
 
 
 ### Получение информации о папке (path=/ если корневая)
-GET {{host_api}}/resource?path=test-folder/
+GET {{host_api}}/resource?path=root-file.txt
 
 ### Создадим файл в существующей папке "test-download"
 POST {{host_api}}/resource?path=test-download/
@@ -81,6 +80,7 @@ Content-Type: multipart/form-data; boundary=boundarys
 
 --boundarys
 Content-Disposition: form-data; name="files"; filename="test.txt"
+Content-Type: text/plain
 
 This is test file content for download.
 --boundarys--
@@ -120,6 +120,7 @@ Content-Type: multipart/form-data; boundary=boundary
 
 --boundary
 Content-Disposition: form-data; name="files"; filename="test-file.txt"
+Content-Type: text/plain
 
 This is a test file for move operation.
 --boundary--
@@ -129,7 +130,7 @@ GET {{host_api}}/resource?path=test-move-files/source/test-file.txt
 Accept: application/json
 
 ### 5. ТЕСТ 1: Переименование файла (rename only)
-GET {{host_api}}/resource/move?from=test-move-files/source/test-file.txt&to=test-move-files/source/renamed-file.txt
+POST {{host_api}}/resource/move?from=test-move-files/source/test-file.txt&to=test-move-files/source/renamed-file.txt
 Accept: application/json
 
 ### 6. Проверяем переименование
