@@ -1,6 +1,6 @@
 # Cloud File Storage — backend (текущий статус)
 
-Описание: Бэкенд для облачного файлового хранилища (1 этап — реализованы регистрация, авторизация, выход из аккаунта; без работы с файлами). Фронтенд тестовый.
+Описание: Бэкенд для облачного файлового хранилища (2 этап — реализована часть функционала работы с файлами). Фронтенд тестовый.
 
 Требования:
 
@@ -11,7 +11,7 @@
 - MinIO (S3-совместимое хранилище)
 - Docker для Postgres/Redis/MinIO
 
-Запуск (локально, dev):
+### Запуск (локально, dev):
 
 1. Поднять зависимости (Postgres, Redis, MinIO) через Docker Compose (файлы `docker-compose*.yml` присутствуют в корне).
 
@@ -19,13 +19,20 @@
 docker-compose up -d --build postgres redis minio
 ```
 
-2. Запустить приложение:
+2. Перейти в директорию с приложением и запустить:
 
 ```bash
+cd backend-gradle-initializr
 ./gradlew bootRun
 ```
 
-## Основные достижения и архитектурные решения
+### Запуск всей сборки в докере:
+
+```bash
+docker-compose up -d --build
+```
+
+## Основные достижения и архитектурные решения текущего этапа
 
 ### 1. Изоляция пользователей
 
@@ -69,22 +76,16 @@ Controller → StorageService → MinioServiceAdapter → MinioServiceImpl
 
 ```
 exception/
-├── GlobalExceptionHandler.java      # Обработчик всех исключений приложения
-├── StorageException.java           # Исключения хранилища (с относительными путями)
-│   ├── InvalidPathException        # 400 - невалидный путь
-│   ├── ResourceNotFoundException   # 404 - ресурс не найден
-│   ├── ResourceAlreadyExistsException # 409 - ресурс уже существует
-│   └── StorageOperationException   # 500 - ошибка операции
-└── UsernameExistsException.java    # 409 - пользователь уже существует
+├── GlobalExceptionHandler.java         # Обработчик всех исключений приложения
+├── StorageException.java               # Исключения хранилища (с относительными путями)
+│   ├── InvalidPathException            # 400 - невалидный путь
+│   ├── ResourceNotFoundException       # 404 - ресурс не найден
+│   ├── ResourceAlreadyExistsException  # 409 - ресурс уже существует
+│   └── StorageOperationException       # 500 - ошибка операции
+└── UsernameExistsException.java        # 409 - пользователь уже существует
 ```
 
 ### 5. Особенности тестирования
-
-#### Важная информация о тестовой среде:
-
-- **Сессии (Set-Cookie) не работают в тестах** - это нормально для Spring Boot Test
-- Тесты проверяют бизнес-логику (создание пользователей, валидацию паролей)
-- Механизм сессий тестируется отдельно или в production-like среде
 
 #### Работающие проверки в тестах:
 
@@ -123,15 +124,15 @@ cd backend-gradle-initializr
 // Основные проверяемые сценарии:
 signUp_and_signIn_success()              // Полный цикл регистрации/входа
 signUp_duplicateUsername_returns409()    // Конфликт пользователей
-signIn_wrongPassword_returns401()        // Неверный пароль
 signUp_invalidData_returnsBadRequest()   // Валидация данных
+signIn_wrongPassword_returns401()        // Неверный пароль
 ```
 
 ### 4. Важные моменты
 
-1. **HTTP статусы при работе с файлами** - контролируем в StorageException.
-2. **Тесты не проверяют Set-Cookie** - это нормально, сессии отключены в тестовой среде. Рекомендация: настроить дополнительный конфиг чтобы фильтры Spring Security отработывали в mockMvc.
-3. **Все операции через MinioServiceAdapter** - здесь гарантируем сокрытие чувствительной информации об устройстве внутренних сервисов: исключения выбрасываются как StorageException - с относительными путями.
+1. **HTTP статусы при работе с файлами** - контролируем в [StorageException.java](backend-gradle-initializr/src/main/java/com/project/exception/StorageException.java).
+2. **Тесты не проверяют Set-Cookie** - это нормально, сессии отключены в тестовой среде. _Рекомендация: настроить дополнительный конфиг чтобы фильтры Spring Security отработывали в mockMvc._
+3. **Все операции через MinioServiceAdapter** - здесь гарантируем сокрытие инфы об устройстве внутренних сервисов: исключения выбрасываются как `StorageException` - с относительными путями, которые доступны на клиенте
 
 ### 5. Команды для отладки
 
@@ -162,8 +163,10 @@ signUp_invalidData_returnsBadRequest()   // Валидация данных
 ### 7. Опционально
 
 - [ ] Интеграционные тесты сервиса по работе с файлами
+  - [x] Создание папки
+  - [ ] Другие важные кейсы
 
-## Предыдущий статус:
+## Предыдущий статус (этап 1)
 
 Важные файлы для проверки:
 
