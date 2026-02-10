@@ -26,23 +26,23 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ### 3. Переменные окружения
 
-| Переменная | Описание | Пример |
-|-----------|---------|--------|
-| POSTGRES_DB | Имя БД | appdb |
-| POSTGRES_USER | Пользователь БД | appuser |
-| POSTGRES_PASSWORD | Пароль БД | secure_password |
-| POSTGRES_PORT | Порт PostgreSQL | 5432 |
-| REDIS_PORT | Порт Redis | 6379 |
-| MINIO_ROOT_USER | Пользователь MinIO | minioadmin |
-| MINIO_ROOT_PASSWORD | Пароль MinIO | secure_password |
-| MINIO_DEFAULT_BUCKETS | Buckets MinIO | user-uploads |
+| Переменная            | Описание           | Пример          |
+| --------------------- | ------------------ | --------------- |
+| POSTGRES_DB           | Имя БД             | appdb           |
+| POSTGRES_USER         | Пользователь БД    | appuser         |
+| POSTGRES_PASSWORD     | Пароль БД          | secure_password |
+| POSTGRES_PORT         | Порт PostgreSQL    | 5432            |
+| REDIS_PORT            | Порт Redis         | 6379            |
+| MINIO_ROOT_USER       | Пользователь MinIO | minioadmin      |
+| MINIO_ROOT_PASSWORD   | Пароль MinIO       | secure_password |
+| MINIO_DEFAULT_BUCKETS | Buckets MinIO      | user-uploads    |
 
 ## Безопасность
 
-✅ Пароли не хранятся в репозитории (.env в .gitignore)
-✅ .env.example служит шаблоном для новых разработчиков
-✅ docker-compose.prod.yml безопасно выкладывается в репозиторий
-✅ Все sensitive данные через переменные окружения
+    ✅ Пароли не хранятся в репозитории (.env в .gitignore)
+    ✅ .env.example служит шаблоном для новых разработчиков
+    ✅ docker-compose.prod.yml безопасно выкладывается в репозиторий
+    ✅ Все sensitive данные через переменные окружения
 
 ## Для production
 
