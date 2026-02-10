@@ -48,10 +48,10 @@ docker-compose up -d --build
 #### Архитектура обработки ошибок:
 
 ```
-Controller → StorageService → MinioServiceAdapter → MinioServiceImpl
-      ↑                             ↑                      ↑
-      └─── возвращает              └─── преобразует      └─── выбрасывает
-      StorageException              fullPath → relativePath RuntimeException
+Controller  →  StorageService  →  MinioServiceAdapter  →  MinioServiceImpl
+      ↑                                ↑                         ↑
+      └─── возвращает                  └─── преобразует          └─── выбрасывает
+      StorageException              fullPath → relativePath         RuntimeException
 ```
 
 #### Ключевые компоненты:
