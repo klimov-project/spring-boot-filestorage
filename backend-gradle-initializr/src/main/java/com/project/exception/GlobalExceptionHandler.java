@@ -3,6 +3,7 @@ package com.project.exception;
 import com.project.dto.response.ErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -35,6 +36,26 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .badRequest()
                 .body(new ErrorResponse(firstError));
+    }
+
+    /**
+     * Обработка отсутствующего тела запроса
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadableException(HttpMessageNotReadableException ex) {
+        // Проверяем, связано ли исключение с отсутствующим телом запроса
+        String message = ex.getMessage();
+        String userMessage;
+
+        if (message != null && message.contains("Required request body is missing")) {
+            userMessage = "Тело запроса обязательно";
+        } else {
+            userMessage = "Неверный формат запроса";
+        }
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(userMessage));
     }
 
     /**
