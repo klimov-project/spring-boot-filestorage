@@ -1,7 +1,8 @@
-const isProduction = import.meta.env.MODE === 'production'; // Определяем режим окружения
+const isProduction = import.meta.env.MODE === 'production';
 
-console.log("isProduction? ", isProduction);
-export const API_BASE_URL = window.APP_CONFIG.baseUrl || 'http://localhost';
+export const API_BASE_URL = isProduction
+  ? window.APP_CONFIG.baseUrl
+  : 'http://localhost';
 
 export const API_CONTEXT = window.APP_CONFIG.baseApi;
 

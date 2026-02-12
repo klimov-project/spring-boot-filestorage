@@ -1,4 +1,4 @@
-import {API_USER_INFO} from "../../../../UrlConstants.jsx";
+import { API_USER_INFO } from "../../../../UrlConstants.jsx";
 import UnauthorizedException from "../../../../exception/UnauthorizedException.jsx";
 
 

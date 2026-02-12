@@ -1,7 +1,7 @@
 window.APP_CONFIG = {
 
     //ссылка на ваш гитхаб репозиторий с проектом
-    githubLink: "https://gist.github.com/zhukovsd/1052313b231bb1eebd5b910990ee1050",
+    githubLink: "https://github.com/klimov-project/spring-boot-filestorage/",
 
     //Имя, которое отображается в хедере
     mainName: "CLOUD STORAGE",
@@ -9,11 +9,10 @@ window.APP_CONFIG = {
     //адрес вашего бэка. если пустой - значит на одном url с таким же портом.
     //если запускаете бэк и фронт через докер compose - тут ставите имя бэка в докер сети
     // baseUrl: "http://155.212.132.18",
-    baseUrl: "http://mydev.local",
+    baseUrl: "http://localhost",
 
     //API префикс вашего бэка
     baseApi: "/api",
-
 
     /*
     *
@@ -29,15 +28,14 @@ window.APP_CONFIG = {
 
     //корректное имя пользователя
     validUsername: {
-        minLength: 5,
-        maxLength: 20,
+        minLength: 3,
+        maxLength: 50,
         pattern: "^[a-zA-Z0-9]+[a-zA-Z_0-9]*[a-zA-Z0-9]+$",
     },
-
     //корректный пароль
     validPassword: {
-        minLength: 5,
-        maxLength: 20,
+        minLength: 6,
+        maxLength: 50,
         pattern: "^[a-zA-Z0-9!@#$%^&*(),.?\":{}|<>[\\]/`~+=-_';]*$",
     },
 
@@ -56,16 +54,16 @@ window.APP_CONFIG = {
     * */
 
     //Разрешать ли перемещение выделенных файлов и папок с помощью перетаскивания в соседние папки. (drag n drop)
-    isMoveAllowed: true,
+    isMoveAllowed: false,
 
     //Разрешить вырезать и вставлять файлы/папки. Для этого используется эндпоинт /move  - если у вас реализован, то всё должно работать
-    isCutPasteAllowed: true,
+    isCutPasteAllowed: false,
 
     //Разрешить кастомное контекстное меню для управления файлами (вызывается правой кнопкой мыши - на одном файле, или на выделенных)
-    isFileContextMenuAllowed: true,
+    isFileContextMenuAllowed: false,
 
     //Разрешить шорткаты на странице - Ctrl+X, Ctrl+V, Del - на выделенных элементах
-    isShortcutsAllowed: true,
+    isShortcutsAllowed: false,
 
     //набор утилитных функций для взаимодействия с фронтом.
     functions: {
@@ -86,8 +84,8 @@ window.APP_CONFIG = {
                 lastModified: null,
                 name: obj.name,
                 size: obj.size,
-                path: obj.path + obj.name, //путь в полном формате необходим для корректной навигации
-                folder: obj.type === "DIRECTORY" // фронт использует простой boolean. Если папка имеет другое название - смените
+                path: obj.path + obj.name,
+                folder: obj.type === "DIRECTORY" 
             }
         },
 
