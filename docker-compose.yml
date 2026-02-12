@@ -50,7 +50,6 @@ services:
       timeout: 20s
       retries: 3
 
-  # БЭКЕНД (Spring Boot)
   backend:
     build:
       context: ./backend-gradle-initializr
@@ -64,6 +63,7 @@ services:
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: ${REDIS_PORT}
       MINIO_ENDPOINT: http://minio:${MINIO_PORT}
+      MINIO_DEFAULT_BUCKETS: ${MINIO_DEFAULT_BUCKETS}
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
     depends_on:

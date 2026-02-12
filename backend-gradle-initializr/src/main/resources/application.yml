@@ -43,8 +43,8 @@ spring:
     url: ${MINIO_ENDPOINT:http://localhost}
     port: ${MINIO_PORT:9000}
     bucket: ${MINIO_DEFAULT_BUCKETS:user-uploads}
-    access-key: ${MINIO_ROOT_USER:minioadmin}
-    secret-key: ${MINIO_ROOT_PASSWORD:minioadmin}
+    access-key: ${MINIO_ACCESS_KEY:minioadmin}
+    secret-key: ${MINIO_SECRET_KEY:minioadmin}
 
   security:
     enabled: false
@@ -61,10 +61,10 @@ spring:
     cache:
       period: 0
 
-# Конфигурация хранилища
-storage:
-  root:
-    path: "./user-storage" # Будет создана рядом с проектом
+# # Конфигурация хранилища
+# storage:
+#   root:
+#     path: "./user-storage" # Будет создана рядом с проектом
 
 # Настройки приложения
 app:
