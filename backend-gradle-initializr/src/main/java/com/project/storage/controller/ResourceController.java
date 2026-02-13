@@ -3,8 +3,6 @@ package com.project.storage.controller;
 import com.project.entity.User;
 import com.project.storage.dto.ResourceInfo;
 import com.project.service.StorageService;
-import com.project.exception.StorageException;
-import com.project.storage.util.PathValidator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,11 +23,9 @@ public class ResourceController {
     private static final Logger logger = LoggerFactory.getLogger(ResourceController.class);
 
     private final StorageService StorageService;
-    private final PathValidator pathValidator;
 
-    public ResourceController(StorageService StorageService, PathValidator pathValidator) {
+    public ResourceController(StorageService StorageService) {
         this.StorageService = StorageService;
-        this.pathValidator = pathValidator;
     }
 
     /**
@@ -42,33 +38,11 @@ public class ResourceController {
 
         logger.info("User {} requested /resource with path: {}", user.getId(), path);
 
-        try {
-            ResponseEntity<?> authCheck = checkAuthResponce(user);
-            if (authCheck != null) {
-                return authCheck;
-            }
-            validatePath(path);
-            logger.debug("Path validation passed for: {}", path);
+        ResourceInfo info = StorageService.getResourceInfo(user.getId(), path);
 
-            ResourceInfo info = StorageService.getResourceInfo(user.getId(), path);
-
-            logger.info("Resource info retrieved successfully for user {}: {}",
-                    user.getId(), path);
-            return ResponseEntity.ok(info);
-        } catch (StorageException.InvalidPathException e) {
-            logger.warn("User {}: Invalid path: {} - {}",
-                    user.getId(), path, e.getMessage());
-            return ResponseEntity.badRequest().body("Invalid path: " + e.getMessage());
-        } catch (StorageException.ResourceNotFoundException e) {
-            logger.warn("User {}: Resource not found: {} - {}",
-                    user.getId(), path, e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        } catch (Exception e) {
-            logger.error("Error getting resource info for user {} path {}: {}",
-                    user.getId(), path, e.getMessage(), e);
-            return ResponseEntity.internalServerError()
-                    .body("Error getting resource info: " + e.getMessage());
-        }
+        logger.info("Resource info retrieved successfully for user {}: {}",
+                user.getId(), path);
+        return ResponseEntity.ok(info);
     }
 
     /**
@@ -81,31 +55,11 @@ public class ResourceController {
 
         logger.info("User {} requested DELETE /resource with path: {}", user.getId(), path);
 
-        try {
-            ResponseEntity<?> authCheck = checkAuthResponce(user);
-            if (authCheck != null) {
-                return authCheck;
-            }
-            validatePath(path);
-            StorageService.deleteResource(user.getId(), path);
+        StorageService.deleteResource(user.getId(), path);
 
-            logger.info("User {} successfully deleted resource: {}",
-                    user.getId(), path);
-            return ResponseEntity.noContent().build();
-        } catch (StorageException.InvalidPathException e) {
-            logger.warn("User {}: Invalid path: {} - {}",
-                    user.getId(), path, e.getMessage());
-            return ResponseEntity.badRequest().body("Invalid path: " + e.getMessage());
-        } catch (StorageException.ResourceNotFoundException e) {
-            logger.warn("User {}: Resource not found: {} - {}",
-                    user.getId(), path, e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        } catch (Exception e) {
-            logger.error("Error deleting resource for user {} path {}: {}",
-                    user.getId(), path, e.getMessage(), e);
-            return ResponseEntity.internalServerError()
-                    .body("Error deleting resource: " + e.getMessage());
-        }
+        logger.info("User {} successfully deleted resource: {}",
+                user.getId(), path);
+        return ResponseEntity.noContent().build();
     }
 
     /**
@@ -120,37 +74,12 @@ public class ResourceController {
         logger.info("User {} requested PUT /resource/move from: {} to: {}",
                 user.getId(), from, to);
 
-        try {
-            ResponseEntity<?> authCheck = checkAuthResponce(user);
-            if (authCheck != null) {
-                return authCheck;
-            }
-            validatePath(from);
-            validatePath(to);
+        ResourceInfo movedResource = StorageService.moveResource(user.getId(), from, to);
 
-            ResourceInfo movedResource = StorageService.moveResource(user.getId(), from, to);
+        logger.info("User {} successfully moved resource from {} to {}",
+                user.getId(), from, to);
+        return ResponseEntity.ok(movedResource);
 
-            logger.info("User {} successfully moved resource from {} to {}",
-                    user.getId(), from, to);
-            return ResponseEntity.ok(movedResource);
-        } catch (StorageException.InvalidPathException e) {
-            logger.warn("User {}: Invalid path: from={}, to={} - {}",
-                    user.getId(), from, to, e.getMessage());
-            return ResponseEntity.badRequest().body("Invalid path: " + e.getMessage());
-        } catch (StorageException.ResourceNotFoundException e) {
-            logger.warn("User {}: Resource not found: {} - {}",
-                    user.getId(), from, e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        } catch (StorageException.ResourceAlreadyExistsException e) {
-            logger.warn("User {}: Resource already exists: {} - {}",
-                    user.getId(), to, e.getMessage());
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
-        } catch (Exception e) {
-            logger.error("Error moving resource for user {} from {} to {}: {}",
-                    user.getId(), from, to, e.getMessage(), e);
-            return ResponseEntity.internalServerError()
-                    .body("Error moving resource: " + e.getMessage());
-        }
     }
 
     /**
@@ -163,24 +92,12 @@ public class ResourceController {
 
         logger.info("User {} requested GET /resource/search with query: {}",
                 user.getId(), query);
+        List<ResourceInfo> results = StorageService.searchResources(user.getId(), query);
 
-        try {
-            if (query == null || query.trim().isEmpty()) {
-                logger.warn("User {}: Empty search query", user.getId());
-                return ResponseEntity.badRequest().body("Search query is required");
-            }
+        logger.info("User {} found {} results for query: {}",
+                user.getId(), results.size(), query);
+        return ResponseEntity.ok(results);
 
-            List<ResourceInfo> results = StorageService.searchResources(user.getId(), query);
-
-            logger.info("User {} found {} results for query: {}",
-                    user.getId(), results.size(), query);
-            return ResponseEntity.ok(results);
-        } catch (Exception e) {
-            logger.error("Error searching resources for user {} query {}: {}",
-                    user.getId(), query, e.getMessage(), e);
-            return ResponseEntity.internalServerError()
-                    .body("Error searching resources: " + e.getMessage());
-        }
     }
 
     /**
@@ -194,11 +111,6 @@ public class ResourceController {
 
         logger.info("User {} requested POST /resource to path: {} with {} files",
                 user.getId(), path, files != null ? files.length : 0);
-
-        if (files == null || files.length == 0) {
-            logger.warn("User {}: No files provided for upload", user.getId());
-            return ResponseEntity.badRequest().body("No files provided");
-        }
 
         List<ResourceInfo> uploaded = StorageService.uploadFiles(user.getId(), path, files);
 
@@ -217,28 +129,11 @@ public class ResourceController {
             @RequestParam String path) {
 
         logger.info("User {} requested GET /directory with path: {}", user.getId(), path);
+        List<ResourceInfo> contents = StorageService.getDirectoryContents(user.getId(), path);
 
-        try {
-            validatePath(path);
-            List<ResourceInfo> contents = StorageService.getDirectoryContents(user.getId(), path);
-
-            logger.info("User {} retrieved {} items from directory: {}",
-                    user.getId(), contents.size(), path);
-            return ResponseEntity.ok(contents);
-        } catch (StorageException.InvalidPathException e) {
-            logger.warn("User {}: Invalid path: {} - {}",
-                    user.getId(), path, e.getMessage());
-            return ResponseEntity.badRequest().body("Invalid path: " + e.getMessage());
-        } catch (StorageException.ResourceNotFoundException e) {
-            logger.warn("User {}: Directory not found: {} - {}",
-                    user.getId(), path, e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        } catch (Exception e) {
-            logger.error("Error getting directory contents for user {} path {}: {}",
-                    user.getId(), path, e.getMessage(), e);
-            return ResponseEntity.internalServerError()
-                    .body("Error getting directory contents: " + e.getMessage());
-        }
+        logger.info("User {} retrieved {} items from directory: {}",
+                user.getId(), contents.size(), path);
+        return ResponseEntity.ok(contents);
     }
 
     /**
@@ -257,26 +152,4 @@ public class ResourceController {
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
-    /**
-     * Валидация пути
-     */
-    private void validatePath(String path) throws StorageException.InvalidPathException {
-        if (path == null || path.trim().isEmpty()) {
-            throw new StorageException.InvalidPathException("Path is null or empty");
-        }
-        if (pathValidator.validateAndGetType(path) == null) {
-            throw new StorageException.InvalidPathException("Invalid path format: " + path);
-        }
-    }
-
-    /**
-     * Кастомный метод для проверки аутентификации пользователя
-     */
-    private ResponseEntity<?> checkAuthResponce(User user) {
-        if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("{\"message\": \"Пользователь не авторизован\"}");
-        }
-        return null;
-    }
 }

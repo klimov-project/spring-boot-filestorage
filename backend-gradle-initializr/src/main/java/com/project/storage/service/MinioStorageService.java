@@ -3,9 +3,11 @@ package com.project.storage.service;
 import com.project.entity.MinioObject;
 import com.project.service.MinioServiceAdapter;
 import com.project.service.StorageService;
-import com.project.storage.dto.ResourceInfo;
 import com.project.exception.StorageException;
+import com.project.storage.dto.ResourceInfo;
 import com.project.storage.model.ResourceType;
+import com.project.storage.util.PathValidator;
+
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -19,9 +21,11 @@ public class MinioStorageService implements StorageService {
 
     private static final Logger logger = LoggerFactory.getLogger(MinioStorageService.class);
     private final MinioServiceAdapter minioServiceAdapter;
+    private final PathValidator pathValidator;
 
-    public MinioStorageService(MinioServiceAdapter minioServiceAdapter) {
+    public MinioStorageService(MinioServiceAdapter minioServiceAdapter, PathValidator pathValidator) {
         this.minioServiceAdapter = minioServiceAdapter;
+        this.pathValidator = pathValidator;
     }
 
     @Override
@@ -29,27 +33,24 @@ public class MinioStorageService implements StorageService {
         try {
             // Создаем корневую папку пользователя
             minioServiceAdapter.createFolder(userId, "/");
-        } catch (Exception e) { 
+        } catch (Exception e) {
             throw e;
         }
     }
 
     @Override
     public ResourceInfo createDirectory(Long userId, String relativePath) {
-        validatePath(relativePath, userId, "createDirectory");
 
         try {
             minioServiceAdapter.createFolder(userId, relativePath);
             return getResourceInfo(userId, relativePath);
-        } catch (Exception e) { 
-            // Уже правильные исключения с относительными путями
+        } catch (Exception e) {
             throw e;
         }
     }
 
     @Override
     public ResourceInfo getResourceInfo(Long userId, String relativePath) {
-        validatePath(relativePath, userId, "getResourceInfo");
 
         // Обработка корневой директории
         if ("/".equals(relativePath) || relativePath == null || relativePath.isEmpty()) {
@@ -64,20 +65,19 @@ public class MinioStorageService implements StorageService {
         try {
             MinioObject object = minioServiceAdapter.getObjectInfo(userId, relativePath);
             return convertToResourceInfo(userId, object);
-        } catch (Exception e) { 
+        } catch (Exception e) {
             throw e;
         }
     }
 
     @Override
     public List<ResourceInfo> uploadFiles(Long userId, String destinationRelativePath, MultipartFile[] files) {
-        validatePath(destinationRelativePath, userId, "uploadFiles");
-        
+
         if (files == null || files.length == 0) {
             throw new StorageException.InvalidPathException(
-                    "Не указаны файлы для загрузки", 
-                    userId, 
-                    destinationRelativePath, 
+                    "Не указаны файлы для загрузки",
+                    userId,
+                    destinationRelativePath,
                     "uploadFiles"
             );
         }
@@ -87,28 +87,25 @@ public class MinioStorageService implements StorageService {
             return uploaded.stream()
                     .map(obj -> convertToResourceInfo(userId, obj))
                     .collect(Collectors.toList());
-        } catch (Exception e) { 
+        } catch (Exception e) {
             throw e;
         }
     }
 
     @Override
     public void deleteResource(Long userId, String relativePath) {
-        validatePath(relativePath, userId, "deleteResource");
 
         try {
             // Проверяем существование перед удалением (выбросит исключение если не найдено)
             minioServiceAdapter.getObjectInfo(userId, relativePath);
             minioServiceAdapter.deleteObject(userId, relativePath);
-        } catch (Exception e) { 
+        } catch (Exception e) {
             throw e;
         }
     }
 
     @Override
     public ResourceInfo moveResource(Long userId, String fromRelativePath, String toRelativePath) {
-        validatePath(fromRelativePath, userId, "moveResource");
-        validatePath(toRelativePath, userId, "moveResource");
 
         try {
             // Проверяем существование исходного ресурса
@@ -118,22 +115,22 @@ public class MinioStorageService implements StorageService {
             try {
                 minioServiceAdapter.getObjectInfo(userId, toRelativePath);
                 throw new StorageException.ResourceAlreadyExistsException(
-                        "Ресурс уже существует: " + toRelativePath, 
-                        userId, 
-                        toRelativePath, 
+                        "Ресурс уже существует: " + toRelativePath,
+                        userId,
+                        toRelativePath,
                         "moveResource"
                 );
             } catch (StorageException.ResourceNotFoundException ex) {
                 // Ресурс не существует - можно продолжать
                 // Игнорируем это исключение, так как это ожидаемо
-            } catch (Exception e) { 
+            } catch (Exception e) {
                 // Другая ошибка - пробрасываем
                 throw e;
             }
 
             minioServiceAdapter.renameObject(userId, fromRelativePath, toRelativePath);
             return getResourceInfo(userId, toRelativePath);
-        } catch (Exception e) { 
+        } catch (Exception e) {
             throw e;
         }
     }
@@ -142,9 +139,9 @@ public class MinioStorageService implements StorageService {
     public List<ResourceInfo> searchResources(Long userId, String query) {
         if (query == null || query.trim().isEmpty()) {
             throw new StorageException.InvalidPathException(
-                    "Поисковый запрос не может быть пустым", 
-                    userId, 
-                    null, 
+                    "Поисковый запрос не может быть пустым",
+                    userId,
+                    null,
                     "searchResources"
             );
         }
@@ -154,55 +151,26 @@ public class MinioStorageService implements StorageService {
             return results.stream()
                     .map(obj -> convertToResourceInfo(userId, obj))
                     .collect(Collectors.toList());
-        } catch (Exception e) { 
+        } catch (Exception e) {
             throw e;
         }
     }
 
     @Override
     public List<ResourceInfo> getDirectoryContents(Long userId, String relativePath) {
-        validatePath(relativePath, userId, "getDirectoryContents");
+        logger.info("User  {} is requesting contents of directory: '{}'", userId, relativePath);
 
         try {
             List<MinioObject> objects = minioServiceAdapter.listObjects(userId, relativePath);
             return objects.stream()
                     .map(obj -> convertToResourceInfo(userId, obj))
                     .collect(Collectors.toList());
-        } catch (Exception e) { 
+        } catch (Exception e) {
             throw e;
         }
     }
 
-    // ============= ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ =============
-    private void validatePath(String path, Long userId, String operation) {
-        if (path == null) {
-            return;
-        }
-
-        if (path.contains("..")) {
-            throw new StorageException.InvalidPathException(
-                    "Путь содержит недопустимые символы '..'", 
-                    userId, 
-                    path, 
-                    operation
-            );
-        }
-    }
-
-    private String getFullPath(Long userId, String relativePath) {
-        String userFolder = getUserFolderPath(userId) + "/";
-
-        if (relativePath == null || relativePath.isEmpty() || "/".equals(relativePath)) {
-            return userFolder;
-        }
-
-        String cleanPath = relativePath.startsWith("/")
-                ? relativePath.substring(1)
-                : relativePath;
-
-        return userFolder + cleanPath;
-    }
-
+    // ============= ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ============= 
     private String getRelativePath(Long userId, String fullPath) {
         String userPrefix = getUserFolderPath(userId) + "/";
 
@@ -257,12 +225,19 @@ public class MinioStorageService implements StorageService {
         if (path == null || path.isEmpty()) {
             return "";
         }
+        boolean isDirectory = false;
 
         if (path.endsWith("/")) {
+            isDirectory = true;
             path = path.substring(0, path.length() - 1);
         }
 
         int lastSlash = path.lastIndexOf('/');
-        return lastSlash != -1 ? path.substring(lastSlash + 1) : path;
+        String nameString = lastSlash != -1 ? path.substring(lastSlash + 1) : path;
+        if (isDirectory) {
+            return nameString + "/";
+        } else {
+            return nameString;
+        }
     }
 }

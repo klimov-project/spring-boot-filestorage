@@ -2,67 +2,46 @@ import { API_DIRECTORY } from "../../../../UrlConstants.jsx";
 import { throwSpecifyException } from "../../../../exception/ThrowSpecifyException.jsx";
 import { mapToFrontFormat } from "../../../util/FormatMapper.js";
 
-
-export const sendGetFolderContent = async (folderName = "") => {
+export const sendGetFolderContent = async (folderName = "", options = {}) => {
+    // Мок-режим
     if (import.meta.env.VITE_MOCK_FETCH_CALLS) {
-        console.log("Mocked fetch call for get folder content");
+        console.log("📦 [MOCK] Get folder content:", folderName || "root");
+        await new Promise(resolve => setTimeout(resolve, 300)); // Симуляция задержки
 
         let mockedResponse = [];
         if (folderName === "") {
             mockedResponse = [
-                {
-                    path: "",
-                    name: "mocked_file.txt",
-                    size: 100,
-                    type: "FILE"
-                },
-                {
-                    path: "",
-                    name: "mocked_folder1/",
-                    type: "DIRECTORY"
-                }
+                { path: "", name: "mocked_file.txt", size: 100, type: "FILE" },
+                { path: "", name: "mocked_folder1/", type: "DIRECTORY" }
             ];
         } else {
             mockedResponse = [
-                {
-                    path: "",
-                    name: "mocked_inner_file.txt",
-                    size: 100,
-                    type: "FILE"
-                }
+                { path: "", name: "mocked_inner_file.txt", size: 100, type: "FILE" }
             ];
         }
 
-        return mockedResponse.map(ob => mapToFrontFormat(ob));
+        return mockedResponse.map(mapToFrontFormat);
     }
 
-    console.log("Запрос на содержимое папки: " + folderName);
+    console.log(`📂 Запрос содержимого: "${folderName || 'корень'}"`);
 
     const params = new URLSearchParams({ path: folderName });
-
     const url = `${API_DIRECTORY}?${params.toString()}`;
 
     const response = await fetch(url, {
         method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        credentials: 'include'
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        signal: options.signal // Поддержка отмены запроса
     });
 
-
     if (!response.ok) {
-        const errorMessage = await response.json();
+        const errorMessage = await response.json().catch(() => ({}));
         throwSpecifyException(response.status, errorMessage);
     }
 
-    let directory = await response.json();
-    console.log("Получен контент из папки: " + folderName);
-    console.log(directory);
+    const directory = await response.json();
+    console.log(`✅ Получено ${directory.length} элементов из:`, folderName || "корень");
 
-    const oldDir = directory.map(ob => mapToFrontFormat(ob));
-    console.log("Контент смаплен для формата фронтенда: ");
-    console.log(oldDir);
-    return oldDir;
-
-}
+    return directory.map(mapToFrontFormat);
+};

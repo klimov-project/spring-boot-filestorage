@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+} from 'react';
 import { checkSession } from '../../services/fetch/auth/user/CheckSession.js';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useNotification } from '../Notification/NotificationProvider.jsx';
@@ -9,6 +16,12 @@ export const useAuthContext = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
   const [auth, setAuth] = useState(extractAuthUser);
+  const urlLocation = useLocation();
+  const navigate = useNavigate();
+  const { showError } = useNotification();
+
+  // Флаг для предотвращения повторных вызовов при монтировании
+  const isMounted = useRef(false);
 
   function extractAuthUser() {
     const isAuth = localStorage.getItem('isAuthenticated');
@@ -32,68 +45,86 @@ export const AuthProvider = ({ children }) => {
     setAuth({ isAuthenticated: false, user: null });
   };
 
-  const urlLocation = useLocation();
-  const [pageVisits, setPageVisits] = useState(0);
-  const navigate = useNavigate();
-
-  const { showError } = useNotification();
-  const validateSession = async () => {
+  // Мемоизируем функцию, чтобы избежать лишних ререндеров
+  const validateSession = useCallback(async () => {
     if (auth.isAuthenticated) {
       try {
         const user = await checkSession();
-        console.log(user);
-        if (user !== auth.user) {
+        console.log('Session check:', user);
+
+        // Проверяем, изменились ли данные пользователя
+        if (user && JSON.stringify(user) !== JSON.stringify(auth.user)) {
           login(user);
         }
       } catch (error) {
+        console.log('Session validation failed:', error);
         logout();
-        setTimeout(() => {
-          navigate('/login');
-          showError('Session is expired! Please login again', 4000);
-        }, 300);
+
+        // Не перенаправляем, если уже на странице логина
+        if (urlLocation.pathname !== '/login') {
+          setTimeout(() => {
+            navigate('/login');
+            showError('Session is expired! Please login again', 4000);
+          }, 300);
+        }
       }
     }
-  };
+  }, [
+    auth.isAuthenticated,
+    auth.user,
+    navigate,
+    showError,
+    urlLocation.pathname,
+  ]);
 
-  const validateCookieIsAlive = async () => {
+  const validateCookieIsAlive = useCallback(async () => {
+    // Проверяем только если пользователь не авторизован в localStorage
     if (!auth.isAuthenticated) {
       try {
         const user = await checkSession();
         if (user) {
           login(user);
+          return true;
         }
       } catch (error) {
-        console.log('Session not present');
+        console.log('No active session found');
+        return false;
       }
     }
-  };
+    return false;
+  }, [auth.isAuthenticated]);
 
-  const checkHealth = async () => {
-    try {
-      const response = await fetch('/api/health', {
-        method: 'GET',
-        credentials: 'include',
-      });
-      console.log('Health check response: ', response);
-    } catch (error) {
-      console.log('Health check error: ', error);
-    }
-  };
-
+  // 1️⃣ Эффект для проверки сессии при монтировании (только 1 раз)
   useEffect(() => {
-    setPageVisits((prev) => prev + 1);
+    // Предотвращаем двойной вызов в StrictMode
+    if (isMounted.current) return;
+    isMounted.current = true;
 
-    if (pageVisits >= 3) {
+    const initAuth = async () => {
+      // Сначала проверяем, есть ли живая сессия у неавторизованных
+      if (!auth.isAuthenticated) {
+        await validateCookieIsAlive();
+      }
+      // Затем валидируем существующую сессию
+      await validateSession();
+    };
+
+    initAuth();
+  }, []); // Пустой массив зависимостей - выполнится 1 раз
+
+  // 2️⃣ Эффект для периодической проверки сессии при навигации
+  useEffect(() => {
+    // Проверяем сессию не при каждом переходе, а каждые 3 перехода
+    const visits = parseInt(localStorage.getItem('pageVisits') || '0');
+    const newVisits = visits + 1;
+
+    if (newVisits >= 3) {
       validateSession();
-      setPageVisits(0);
+      localStorage.setItem('pageVisits', '0');
+    } else {
+      localStorage.setItem('pageVisits', newVisits.toString());
     }
-  }, [urlLocation.pathname]);
-
-  useEffect(() => {
-    checkHealth();
-    validateSession();
-    validateCookieIsAlive();
-  }, []);
+  }, [urlLocation.pathname, validateSession]);
 
   return (
     <AuthContext.Provider value={{ auth, login, logout }}>

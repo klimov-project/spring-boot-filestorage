@@ -18,8 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-import com.project.service.MinioService;
-
 @RequiredArgsConstructor
 @Service
 public class MinioServiceImpl implements MinioService {
@@ -66,7 +64,7 @@ public class MinioServiceImpl implements MinioService {
             createFolderInMinio(fullPath);
             logger.debug("Папка создана: {}", fullPath);
         } catch (Exception e) {
-            throw new RuntimeException(e.getMessage(), e);
+            throw new RuntimeException("createFolder: " + e.getMessage(), e);
         }
     }
 
@@ -99,7 +97,7 @@ public class MinioServiceImpl implements MinioService {
 
             return uploadedObjects;
         } catch (Exception e) {
-            throw new RuntimeException(e.getMessage(), e);
+            throw new RuntimeException("uploadFiles: " + e.getMessage(), e);
         }
     }
 
@@ -114,12 +112,7 @@ public class MinioServiceImpl implements MinioService {
             );
             logger.debug("Объект удалён: {}", fullPath);
         } catch (Exception e) {
-            if (e instanceof ErrorResponseException err) {
-                if ("NoSuchKey".equals(err.errorResponse().code())) {
-                    throw new RuntimeException("Ресурс не найден: " + extractRelativePath(fullPath));
-                }
-            }
-            throw new RuntimeException("Ошибка при удалении: " + e.getMessage(), e);
+            throw new RuntimeException("deleteObject: " + e.getMessage(), e);
         }
     }
 
@@ -139,7 +132,7 @@ public class MinioServiceImpl implements MinioService {
             deleteObject(oldFullPath);
             logger.debug("Объект переименован: {} -> {}", oldFullPath, newFullPath);
         } catch (Exception e) {
-            throw new RuntimeException(e.getMessage(), e);
+            throw new RuntimeException("renameObject: " + e.getMessage(), e);
         }
     }
 
@@ -167,7 +160,7 @@ public class MinioServiceImpl implements MinioService {
 
             return results;
         } catch (Exception e) {
-            throw new RuntimeException(e.getMessage(), e);
+            throw new RuntimeException("searchFiles: " + e.getMessage(), e);
         }
     }
 
@@ -183,7 +176,7 @@ public class MinioServiceImpl implements MinioService {
                             .build()
             );
         } catch (Exception e) {
-            throw new RuntimeException(e.getMessage(), e);
+            throw new RuntimeException("getDownloadUrl: " + e.getMessage(), e);
         }
     }
 
@@ -197,13 +190,8 @@ public class MinioServiceImpl implements MinioService {
                             .build()
             );
             return true;
-        } catch (ErrorResponseException e) {
-            if ("NoSuchKey".equals(e.errorResponse().code())) {
-                return false;
-            }
-            throw new RuntimeException(e.getMessage(), e);
         } catch (Exception e) {
-            throw new RuntimeException(e.getMessage(), e);
+            throw new RuntimeException("objectExists: " + e.getMessage(), e);
         }
     }
 
@@ -224,13 +212,7 @@ public class MinioServiceImpl implements MinioService {
                     .isDirectory(fullPath.endsWith("/"))
                     .build();
         } catch (Exception e) {
-            if (e instanceof ErrorResponseException) {
-                ErrorResponseException err = (ErrorResponseException) e;
-                if ("NoSuchKey".equals(err.errorResponse().code())) {
-                    throw new RuntimeException("Ресурс не найден: " + extractRelativePath(fullPath));
-                }
-            }
-            throw new RuntimeException("Ошибка при получении информации: " + e.getMessage(), e);
+            throw new RuntimeException("getObjectInfo " + e.getMessage(), e);
         }
     }
 
@@ -351,41 +333,5 @@ public class MinioServiceImpl implements MinioService {
 
         int lastSlash = path.lastIndexOf('/');
         return lastSlash != -1 ? path.substring(lastSlash + 1) : path;
-    }
-
-    private String extractRelativePath(String fullPath) {
-        // Извлекаем часть пути после user-{id}-files/
-        String[] parts = fullPath.split("/");
-        if (parts.length > 1 && parts[0].startsWith("user-") && parts[0].endsWith("-files")) {
-            if (parts.length == 1) {
-                return "/";
-            }
-            StringBuilder relative = new StringBuilder();
-            for (int i = 1; i < parts.length; i++) {
-                relative.append(parts[i]);
-                if (i < parts.length - 1 || fullPath.endsWith("/")) {
-                    relative.append("/");
-                }
-            }
-            return relative.toString();
-        }
-        return fullPath;
-    }
-
-    private String getParentPath(String fullPath) {
-        if (fullPath == null || fullPath.isEmpty()) {
-            return "";
-        }
-
-        if (fullPath.endsWith("/")) {
-            fullPath = fullPath.substring(0, fullPath.length() - 1);
-        }
-
-        int lastSlash = fullPath.lastIndexOf('/');
-        if (lastSlash == -1) {
-            return "";
-        }
-
-        return fullPath.substring(0, lastSlash + 1);
     }
 }

@@ -19,11 +19,18 @@
 docker-compose up -d --build postgres redis minio
 ```
 
-2. Перейти в директорию с приложением и запустить:
+2. Перейти в директорию с backend и запустить:
 
 ```bash
 cd backend-gradle-initializr
 ./gradlew bootRun
+```
+
+3. Перейти в директорию с frontend и запустить:
+
+```bash
+cd frontend-placeholder
+npm run dev
 ```
 
 ### Запуск всей сборки в докере:

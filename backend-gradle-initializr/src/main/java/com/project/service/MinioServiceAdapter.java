@@ -1,5 +1,6 @@
 package com.project.service;
 
+import com.project.entity.MinioObject;
 import com.project.exception.StorageException;
 import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
@@ -35,7 +36,7 @@ public class MinioServiceAdapter {
     /**
      * Получение информации об объекте с преобразованием исключений
      */
-    public com.project.entity.MinioObject getObjectInfo(Long userId, String relativePath) {
+    public MinioObject getObjectInfo(Long userId, String relativePath) {
         String fullPath = toFullPath(userId, relativePath);
 
         try {
@@ -48,7 +49,7 @@ public class MinioServiceAdapter {
     /**
      * Загрузка файлов с преобразованием исключений
      */
-    public java.util.List<com.project.entity.MinioObject> uploadFiles(
+    public java.util.List<MinioObject> uploadFiles(
             Long userId,
             String destinationRelativePath,
             org.springframework.web.multipart.MultipartFile[] files) {
@@ -92,7 +93,7 @@ public class MinioServiceAdapter {
     /**
      * Поиск файлов с преобразованием исключений
      */
-    public java.util.List<com.project.entity.MinioObject> searchFiles(
+    public java.util.List<MinioObject> searchFiles(
             Long userId,
             String query) {
 
@@ -108,7 +109,7 @@ public class MinioServiceAdapter {
     /**
      * Получение списка объектов с преобразованием исключений
      */
-    public java.util.List<com.project.entity.MinioObject> listObjects(
+    public java.util.List<MinioObject> listObjects(
             Long userId,
             String relativePath) {
 
