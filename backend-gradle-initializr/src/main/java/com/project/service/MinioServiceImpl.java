@@ -1,7 +1,6 @@
 package com.project.service;
 
 import com.project.entity.MinioObject;
-import com.project.exception.StorageException;
 import io.minio.*;
 import io.minio.errors.*;
 import io.minio.http.Method;
@@ -104,16 +103,68 @@ public class MinioServiceImpl implements MinioService {
     @Override
     public void deleteObject(String fullPath) {
         try {
-            minioClient.removeObject(
-                    RemoveObjectArgs.builder()
-                            .bucket(bucket)
-                            .object(fullPath)
-                            .build()
-            );
-            logger.debug("Объект удалён: {}", fullPath);
+            // Проверяем, является ли объект папкой
+            if (fullPath.endsWith("/") || isDirectory(fullPath)) {
+                logger.debug("Удаление папки (рекурсивно): {}", fullPath);
+
+                // Получаем все объекты в папке рекурсивно (одним запросом)
+                List<String> objectsToDelete = collectAllObjectsRecursive(fullPath);
+
+                // Добавляем саму папку
+                objectsToDelete.add(fullPath);
+
+                // Удаляем все объекты
+                deleteObjects(objectsToDelete);
+
+                logger.debug("Папка и содержимое удалены: {}. Объектов: {}",
+                        fullPath, objectsToDelete.size());
+            } else {
+                // Просто удаляем файл
+                minioClient.removeObject(
+                        RemoveObjectArgs.builder()
+                                .bucket(bucket)
+                                .object(fullPath)
+                                .build()
+                );
+                logger.debug("Файл удалён: {}", fullPath);
+            }
         } catch (Exception e) {
             throw new RuntimeException("deleteObject: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Сбор всех объектов в папке рекурсивно
+     */
+    private List<String> collectAllObjectsRecursive(String folderPath) {
+        List<String> objects = new ArrayList<>();
+
+        try {
+            String prefix = ensureTrailingSlash(folderPath);
+
+            Iterable<Result<Item>> results = minioClient.listObjects(
+                    ListObjectsArgs.builder()
+                            .bucket(bucket)
+                            .prefix(prefix)
+                            .recursive(true)
+                            .build()
+            );
+
+            for (Result<Item> result : results) {
+                Item item = result.get();
+                String objectName = item.objectName();
+
+                // Пропускаем саму папку
+                if (!objectName.equals(prefix)) {
+                    objects.add(objectName);
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Ошибка при сборе объектов в папке: {}", folderPath, e);
+            throw new RuntimeException("Ошибка при сборе объектов в папке: " + folderPath, e);
+        }
+
+        return objects;
     }
 
     @Override
@@ -191,7 +242,7 @@ public class MinioServiceImpl implements MinioService {
             );
             return true;
         } catch (Exception e) {
-            throw new RuntimeException("objectExists: " + e.getMessage(), e);
+            return false;
         }
     }
 
@@ -214,11 +265,6 @@ public class MinioServiceImpl implements MinioService {
         } catch (Exception e) {
             throw new RuntimeException("getObjectInfo " + e.getMessage(), e);
         }
-    }
-
-    @Override
-    public String getBucketName() {
-        return bucket;
     }
 
     // ============= ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ =============
@@ -314,7 +360,7 @@ public class MinioServiceImpl implements MinioService {
                 .name(extractName(item.objectName()))
                 .path(item.objectName())
                 .size(item.size())
-                .isDirectory(item.isDir() || item.objectName().endsWith("/"))
+                .isDirectory(item.isDir() && item.objectName().endsWith("/"))
                 .build();
     }
 
@@ -334,4 +380,60 @@ public class MinioServiceImpl implements MinioService {
         int lastSlash = path.lastIndexOf('/');
         return lastSlash != -1 ? path.substring(lastSlash + 1) : path;
     }
+
+    /**
+     * Удаление нескольких объектов (используется для рекурсивного удаления
+     * папки)
+     */
+    private void deleteObjects(List<String> objectsToDelete) {
+        for (String objectPath : objectsToDelete) {
+            try {
+                minioClient.removeObject(
+                        RemoveObjectArgs.builder()
+                                .bucket(bucket)
+                                .object(objectPath)
+                                .build()
+                );
+            } catch (Exception e) {
+                logger.error("Ошибка при удалении объекта: {}", objectPath, e);
+                // Продолжаем удаление остальных объектов
+            }
+        }
+    }
+
+    /**
+     * Проверка, является ли объект папкой
+     */
+    private boolean isDirectory(String fullPath) {
+        try {
+            // Пытаемся получить информацию об объекте
+            minioClient.statObject(
+                    StatObjectArgs.builder()
+                            .bucket(bucket)
+                            .object(fullPath)
+                            .build()
+            );
+
+            // Дополнительная проверка через listObjects
+            String prefix = ensureTrailingSlash(fullPath);
+            Iterable<Result<Item>> results = minioClient.listObjects(
+                    ListObjectsArgs.builder()
+                            .bucket(bucket)
+                            .prefix(prefix)
+                            .maxKeys(1)
+                            .build()
+            );
+
+            // Если есть хотя бы один объект с таким префиксом - это папка
+            return results.iterator().hasNext();
+
+        } catch (ErrorResponseException e) {
+            logger.error("Объект не найден при проверке типа: {}", fullPath, e);
+            return false;
+        } catch (Exception e) {
+            logger.error("Ошибка при проверке типа объекта: {}", fullPath, e);
+            return false;
+        }
+    }
+
 }

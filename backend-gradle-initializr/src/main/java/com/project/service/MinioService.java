@@ -11,8 +11,7 @@ public interface MinioService {
     List<MinioObject> listObjects(String fullPath);
 
     List<MinioObject> uploadFiles(String destinationFullPath, MultipartFile[] files);
-
-    String getBucketName();
+ 
 
     void renameObject(String oldFullPath, String newFullPath);
 

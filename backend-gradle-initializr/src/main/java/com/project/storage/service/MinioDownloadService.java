@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,6 +29,8 @@ public class MinioDownloadService implements DownloadService {
 
     private static final Logger logger = LoggerFactory.getLogger(MinioDownloadService.class);
 
+    @Value("${spring.minio.bucket}")
+    private String bucket;
     private final StorageService storageService;
     private final MinioClient minioClient;
     private final MinioServiceAdapter minioServiceAdapter;
@@ -90,12 +93,12 @@ public class MinioDownloadService implements DownloadService {
 
         // Получаем полный путь через адаптер
         String fullPath = getFullPathForMinio(userId, relativePath);
-        
+
         try {
             // Используем minioClient напрямую для скачивания
             InputStream stream = minioClient.getObject(
                     GetObjectArgs.builder()
-                            .bucket(minioServiceAdapter.getBucketName())
+                            .bucket(bucket)
                             .object(fullPath)
                             .build()
             );
@@ -222,10 +225,10 @@ public class MinioDownloadService implements DownloadService {
      */
     private void addFileToZip(ZipOutputStream zos, MinioFileInfo fileInfo) throws IOException {
         String fullPath = getFullPathForMinio(fileInfo.getUserId(), fileInfo.getRelativePath());
-        
+
         try (InputStream fileStream = minioClient.getObject(
                 GetObjectArgs.builder()
-                        .bucket(minioServiceAdapter.getBucketName())
+                        .bucket(bucket)
                         .object(fullPath)
                         .build()
         )) {
@@ -263,14 +266,15 @@ public class MinioDownloadService implements DownloadService {
      * Получение полного пути для MinIO
      */
     private String getFullPathForMinio(Long userId, String relativePath) {
-        return "user-" + userId + "-files/" + 
-               (relativePath.startsWith("/") ? relativePath.substring(1) : relativePath);
+        return "user-" + userId + "-files/"
+                + (relativePath.startsWith("/") ? relativePath.substring(1) : relativePath);
     }
 
     /**
      * Внутренний класс для хранения информации о файле в MinIO
      */
     private static class MinioFileInfo {
+
         private final Long userId;
         private final String relativePath;
         private final String name;
@@ -283,22 +287,32 @@ public class MinioDownloadService implements DownloadService {
             this.size = size;
         }
 
-        public Long getUserId() { return userId; }
-        public String getRelativePath() { return relativePath; }
-        public String getName() { return name; }
-        public long getSize() { return size; }
+        public Long getUserId() {
+            return userId;
+        }
+
+        public String getRelativePath() {
+            return relativePath;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public long getSize() {
+            return size;
+        }
     }
 
     @Override
     public String getDirectDownloadUrl(Long userId, String path) {
         try {
             return minioServiceAdapter.getDownloadUrl(userId, path);
-            } catch (Exception e) { 
+        } catch (Exception e) {
             logger.error("Error generating direct download URL for user {} path {}: {}",
                     userId, path, e.getMessage());
             throw e;
         }
 
-        
     }
 }
