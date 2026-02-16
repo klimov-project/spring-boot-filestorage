@@ -1,8 +1,6 @@
 package com.project.storage.service;
 
 import com.project.entity.MinioObject;
-import com.project.service.MinioServiceAdapter;
-import com.project.service.StorageService;
 import com.project.exception.StorageException;
 import com.project.storage.dto.ResourceInfo;
 import com.project.storage.model.ResourceType;

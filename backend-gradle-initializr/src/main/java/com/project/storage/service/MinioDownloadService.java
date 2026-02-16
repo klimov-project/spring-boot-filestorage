@@ -1,7 +1,5 @@
 package com.project.storage.service;
 
-import com.project.service.MinioServiceAdapter;
-import com.project.service.StorageService;
 import com.project.exception.StorageException;
 import com.project.storage.dto.ResourceInfo;
 import com.project.storage.util.PathValidator;

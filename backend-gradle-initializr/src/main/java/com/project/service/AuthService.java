@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.project.service.StorageService;
+import com.project.storage.service.StorageService;
 
 import com.project.dto.request.SignupRequest;
 import com.project.entity.User;

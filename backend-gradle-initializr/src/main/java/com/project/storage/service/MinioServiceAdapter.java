@@ -1,4 +1,4 @@
-package com.project.service;
+package com.project.storage.service;
 
 import com.project.entity.MinioObject;
 import com.project.exception.StorageException;

@@ -2,7 +2,7 @@ package com.project.storage.controller;
 
 import com.project.entity.User;
 import com.project.storage.dto.ResourceInfo;
-import com.project.service.StorageService;
+import com.project.storage.service.StorageService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
