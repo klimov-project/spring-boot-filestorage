@@ -165,19 +165,7 @@ public class MinioServiceAdapter {
 
         return userPrefix + cleanPath;
     }
-
-    /**
-     * Извлечение относительного пути из полного
-     */
-    private String toRelativePath(Long userId, String fullPath) {
-        String userPrefix = "user-" + userId + "-files/";
-
-        if (fullPath.startsWith(userPrefix)) {
-            return fullPath.substring(userPrefix.length());
-        }
-        return fullPath;
-    }
-
+    
     /**
      * Извлечение родительского пути
      */
@@ -196,23 +184,7 @@ public class MinioServiceAdapter {
         }
 
         return cleanPath.substring(0, lastSlash);
-    }
-
-    /**
-     * Извлечение имени из пути
-     */
-    private String extractNameFromPath(String path) {
-        if (path == null || path.isEmpty()) {
-            return "";
-        }
-
-        if (path.endsWith("/")) {
-            path = path.substring(0, path.length() - 1);
-        }
-
-        int lastSlash = path.lastIndexOf('/');
-        return lastSlash != -1 ? path.substring(lastSlash + 1) : path;
-    }
+    } 
 
     // ============= ТРАНСФОРМАЦИЯ ИСКЛЮЧЕНИЙ =============
     private RuntimeException transformCreateFolderException(
@@ -432,12 +404,5 @@ public class MinioServiceAdapter {
                 relativePath,
                 "getDownloadUrl"
         );
-    }
-
-    /**
-     * Получение имени бакета (простая делегация)
-     */
-    public String getBucketName() {
-        return minioService.getBucketName();
-    }
+    } 
 }
