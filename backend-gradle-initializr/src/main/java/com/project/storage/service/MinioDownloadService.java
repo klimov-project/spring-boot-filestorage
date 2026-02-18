@@ -63,7 +63,7 @@ public class MinioDownloadService implements DownloadService {
         ResourceInfo resourceInfo = storageService.getResourceInfo(userId, path);
 
         // Проверяем существование объекта в MinIO через адаптер
-        if (!minioServiceAdapter.objectExists(userId, path)) {
+        if (!minioServiceAdapter.isObjectExists(userId, path)) {
             throw new StorageException.ResourceNotFoundException(
                     "Resource not found: " + path,
                     userId,
