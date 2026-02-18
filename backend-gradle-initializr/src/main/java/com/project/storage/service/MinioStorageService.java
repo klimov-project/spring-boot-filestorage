@@ -70,7 +70,6 @@ public class MinioStorageService implements StorageService {
 
     @Override
     public List<ResourceInfo> uploadFiles(Long userId, String destinationRelativePath, MultipartFile[] files) {
-
         if (files == null || files.length == 0) {
             throw new StorageException.InvalidPathException(
                     "Не указаны файлы для загрузки",
@@ -81,7 +80,19 @@ public class MinioStorageService implements StorageService {
         }
 
         try {
+            for (MultipartFile file : files) {
+                // Получаем относительный путь файла (например, "test-folder/file.txt")
+                String relativePath = file.getOriginalFilename(); // браузер сам отправляет относительный путь
+                // Добавляем папку назначения для получения полного пути необходимых подпапок (например /folder-to-load-into/test-folder/file.txt)
+                String fullFilePath = destinationRelativePath + relativePath;
+
+                // 1. Создаём все недостающие папки по пути (кроме самого файла)
+                createParentFoldersIfNeeded(userId, fullFilePath);
+            }
+
+            logger.debug("minioServiceAdapter.uploadFiles destinationRelativePath: {}", destinationRelativePath);
             List<MinioObject> uploaded = minioServiceAdapter.uploadFiles(userId, destinationRelativePath, files);
+
             return uploaded.stream()
                     .map(obj -> convertToResourceInfo(userId, obj))
                     .collect(Collectors.toList());
@@ -105,27 +116,8 @@ public class MinioStorageService implements StorageService {
     @Override
     public ResourceInfo moveResource(Long userId, String fromRelativePath, String toRelativePath) {
 
-        try {
-            // Проверяем существование исходного ресурса
-            minioServiceAdapter.getObjectInfo(userId, fromRelativePath);
-
-            // Проверяем, не существует ли уже целевой ресурс
-            try {
-                minioServiceAdapter.getObjectInfo(userId, toRelativePath);
-                throw new StorageException.ResourceAlreadyExistsException(
-                        "Ресурс уже существует: " + toRelativePath,
-                        userId,
-                        toRelativePath,
-                        "moveResource"
-                );
-            } catch (StorageException.ResourceNotFoundException ex) {
-                // Ресурс не существует - можно продолжать
-                // Игнорируем это исключение, так как это ожидаемо
-            } catch (Exception e) {
-                // Другая ошибка - пробрасываем
-                throw e;
-            }
-
+        try { 
+            isMoveAllowed(userId, fromRelativePath, toRelativePath); 
             minioServiceAdapter.renameObject(userId, fromRelativePath, toRelativePath);
             return getResourceInfo(userId, toRelativePath);
         } catch (Exception e) {
@@ -237,5 +229,69 @@ public class MinioStorageService implements StorageService {
         } else {
             return nameString;
         }
+    }
+
+    /**
+     * Создаёт все промежуточные папки для указанного пути, если их нет.
+     */
+    private void createParentFoldersIfNeeded(Long userId, String fullFilePath) {
+        // Обрезаем имя файла, оставляем только путь до папки
+        logger.debug("createParentFoldersIfNeeded Обрезаем имя файла, оставляем только путь до папки: {}", fullFilePath);
+        int lastSlash = fullFilePath.lastIndexOf('/');
+        if (lastSlash == -1) {
+            return;
+        }
+        String foldersPath = fullFilePath.substring(0, lastSlash + 1);
+        logger.debug("foldersPath: {}", foldersPath);
+
+        // Разбиваем путь на части и создаём поочерёдно каждую папку
+        String[] parts = foldersPath.split("/");
+        StringBuilder currentPath = new StringBuilder();
+        // Пропускаем пустые элементы (например, если путь начинается с '/')
+        logger.debug("Пропускаем пустые элементы currentPath: {}", currentPath);
+        for (String part : parts) {
+            if (part.isEmpty()) {
+                continue;
+            }
+            logger.debug("minioServiceAdapter 1111: {}", currentPath);
+            currentPath.append(part).append("/");
+            String pathToCheck = currentPath.toString();
+            minioServiceAdapter.createFolder(userId, pathToCheck, false);
+        }
+    }
+
+    private boolean isMoveAllowed(Long userId, String fromPath, String toPath) {
+        // Проверяем, что не пытаются переместить папку внутрь самой себя или её подпапки
+        if (toPath.startsWith(fromPath)) {
+            throw new StorageException.InvalidPathException(
+                    "Нельзя переместить папку внутрь самой себя или её подпапки",
+                    null,
+                    toPath,
+                    "moveResource"
+            );
+        }
+
+        // Проверяем существование исходного ресурса
+        if (!minioServiceAdapter.isObjectExists(userId, fromPath)) {
+            throw new StorageException.ResourceNotFoundException(
+                    "Исходный ресурс не существует: " + fromPath,
+                    userId,
+                    fromPath,
+                    "moveResource"
+            );
+        }
+
+        // Проверяем отсутствие целевого ресурса
+        if (minioServiceAdapter.isObjectExists(userId, toPath)) {
+            throw new StorageException.ResourceAlreadyExistsException(
+                    "Ресурс уже существует: " + toPath,
+                    userId,
+                    toPath,
+                    "moveResource"
+            );
+
+        }
+
+        return true;
     }
 }

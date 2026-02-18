@@ -1,5 +1,6 @@
 package com.project.storage.service;
 
+import java.util.List;
 import com.project.entity.MinioObject;
 import com.project.exception.StorageException;
 import org.springframework.stereotype.Component;
@@ -21,13 +22,17 @@ public class MinioServiceAdapter {
     /**
      * Создание папки с преобразованием исключений
      */
-    public void createFolder(Long userId, String relativePath) {
+    public void createFolder(Long userId, String fullPath) {
+        createFolder(userId, fullPath, true);
+    }
+
+    public void createFolder(Long userId, String relativePath, boolean strict) {
         String fullPath = toFullPath(userId, relativePath);
         logger.debug("Creating folder - userId: {}, relativePath: {}, fullPath: {}",
                 userId, relativePath, fullPath);
 
         try {
-            minioService.createFolder(fullPath);
+            minioService.createFolder(fullPath, strict);
         } catch (Exception e) {
             throw transformCreateFolderException(e, userId, relativePath);
         }
@@ -49,7 +54,7 @@ public class MinioServiceAdapter {
     /**
      * Загрузка файлов с преобразованием исключений
      */
-    public java.util.List<MinioObject> uploadFiles(
+    public List<MinioObject> uploadFiles(
             Long userId,
             String destinationRelativePath,
             org.springframework.web.multipart.MultipartFile[] files) {
@@ -93,7 +98,7 @@ public class MinioServiceAdapter {
     /**
      * Поиск файлов с преобразованием исключений
      */
-    public java.util.List<MinioObject> searchFiles(
+    public List<MinioObject> searchFiles(
             Long userId,
             String query) {
 
@@ -109,7 +114,7 @@ public class MinioServiceAdapter {
     /**
      * Получение списка объектов с преобразованием исключений
      */
-    public java.util.List<MinioObject> listObjects(
+    public List<MinioObject> listObjects(
             Long userId,
             String relativePath) {
 
@@ -125,11 +130,11 @@ public class MinioServiceAdapter {
     /**
      * Проверка существования объекта с преобразованием исключений
      */
-    public boolean objectExists(Long userId, String relativePath) {
+    public boolean isObjectExists(Long userId, String relativePath) {
         String fullPath = toFullPath(userId, relativePath);
 
         try {
-            return minioService.objectExists(fullPath);
+            return minioService.isObjectExists(fullPath);
         } catch (Exception e) {
             throw transformObjectExistsException(e, userId, relativePath);
         }
@@ -165,7 +170,7 @@ public class MinioServiceAdapter {
 
         return userPrefix + cleanPath;
     }
-    
+
     /**
      * Извлечение родительского пути
      */
@@ -184,7 +189,7 @@ public class MinioServiceAdapter {
         }
 
         return cleanPath.substring(0, lastSlash);
-    } 
+    }
 
     // ============= ТРАНСФОРМАЦИЯ ИСКЛЮЧЕНИЙ =============
     private RuntimeException transformCreateFolderException(
@@ -404,5 +409,5 @@ public class MinioServiceAdapter {
                 relativePath,
                 "getDownloadUrl"
         );
-    } 
+    }
 }

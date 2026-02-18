@@ -6,12 +6,13 @@ import java.util.List;
 
 public interface MinioService {
 
-    void createFolder(String fullPath);
+    void createFolder(String fullPath); // strict mode by default
+
+    void createFolder(String fullPath, boolean strict); // for "uploadFiles"
 
     List<MinioObject> listObjects(String fullPath);
 
     List<MinioObject> uploadFiles(String destinationFullPath, MultipartFile[] files);
- 
 
     void renameObject(String oldFullPath, String newFullPath);
 
@@ -19,7 +20,7 @@ public interface MinioService {
 
     String getDownloadUrl(String fullPath);
 
-    boolean objectExists(String fullPath);
+    boolean isObjectExists(String fullPath);
 
     MinioObject getObjectInfo(String fullPath);
 

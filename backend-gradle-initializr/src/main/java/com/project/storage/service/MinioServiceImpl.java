@@ -56,14 +56,48 @@ public class MinioServiceImpl implements MinioService {
         }
     }
 
+    /**
+     * Создаёт папку в Minio.
+     *
+     * @param userId id пользователя
+     * @param fullPath полный путь к папке (с / на конце)
+     * @param strict true — строгий режим (ошибка, если уже есть файл/папка с
+     * таким именем), false — нестрогий (ошибки игнорируются)
+     */
+    // По умолчанию — строгий режим
     @Override
     public void createFolder(String fullPath) {
+        createFolder(fullPath, true);
+    }
+
+    @Override
+    public void createFolder(String fullPath, boolean strict) {
         try {
-            validateFolderCreation(fullPath);
+            // TODO: Валидация пути (например, запрещённые символы и т.д.)
+            // pathValidator.validateFolderPath(fullPath);
+
+            // Проверяем, существует ли уже объект с таким именем 
+            boolean exists = isObjectExists(fullPath);
+
+            if (exists) {
+                if (strict) {
+                    throw new RuntimeException("Folder already exists error on 'createFolder' method. ");
+                } else {
+                    // В нестрогом режиме просто выходим, не создаём и не кидаем ошибку
+                    logger.debug("Папка уже существует (нестрогий режим): {}", fullPath);
+                    return;
+                }
+            }
             createFolderInMinio(fullPath);
             logger.debug("Папка создана: {}", fullPath);
+
         } catch (Exception e) {
-            throw new RuntimeException("createFolder: " + e.getMessage(), e);
+            if (strict) {
+                throw new RuntimeException("createFolder: " + e.getMessage(), e);
+            } else {
+                // В нестрогом режиме просто логируем и продолжаем
+                logger.warn("Ошибка при создании папки (нестрогий режим): {} — {}", fullPath, e.getMessage());
+            }
         }
     }
 
@@ -232,7 +266,7 @@ public class MinioServiceImpl implements MinioService {
     }
 
     @Override
-    public boolean objectExists(String fullPath) {
+    public boolean isObjectExists(String fullPath) {
         try {
             minioClient.statObject(
                     StatObjectArgs.builder()
@@ -248,6 +282,7 @@ public class MinioServiceImpl implements MinioService {
 
     @Override
     public MinioObject getObjectInfo(String fullPath) {
+        logger.debug("getObjectInfo:  fullPath = {}", fullPath);
         try {
             StatObjectResponse stat = minioClient.statObject(
                     StatObjectArgs.builder()
@@ -268,39 +303,7 @@ public class MinioServiceImpl implements MinioService {
     }
 
     // ============= ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ =============
-    private void validateFolderCreation(String fullPath) throws Exception {
-        logger.info("=== Initializing validateFolderCreation ===");
-        logger.info("  fullPath: {}  ", fullPath);
-        // Удаляем завершающий слеш если есть
-        String normalizedPath = fullPath.endsWith("/")
-                ? fullPath.substring(0, fullPath.length() - 1)
-                : fullPath;
-
-        logger.info("  normalizedPath: {}  ", normalizedPath);
-        // Проверка существования папки
-        if (objectExists(normalizedPath + "/")) {
-            logger.info(" ==  Path already exists 454545 {}", normalizedPath);
-            throw new RuntimeException("Path already exists 454545 : " + normalizedPath);
-        }
-
-        // Проверка родительской папки
-        if (fullPath.contains("/")) {
-            // Находим последний слеш
-            int lastSlashIndex = normalizedPath.lastIndexOf('/');
-            if (lastSlashIndex > 0) {
-                // Берем путь до последнего слеша 
-                String parentPath = normalizedPath.substring(0, lastSlashIndex);
-
-                if (!parentPath.isEmpty()) {
-                    String parentObjectName = ensureTrailingSlash(parentPath);
-                    if (!objectExists(parentObjectName)) {
-                        throw new NoSuchElementException("Родительская папка не существует");
-                    }
-                }
-            }
-        }
-    }
-
+    //  
     private void validateFileCreation(String fullPath) throws Exception {
         logger.info("=== Initializing validateFileCreation ===");
         logger.info("  fullPath: {}  ", fullPath);
@@ -311,7 +314,7 @@ public class MinioServiceImpl implements MinioService {
 
         logger.info("  normalizedPath: {}  ", normalizedPath);
         // Проверка существования файла
-        if (objectExists(normalizedPath)) {
+        if (isObjectExists(normalizedPath)) {
             logger.info(" ==  File already exists 77777 {}", normalizedPath);
             throw new RuntimeException("File already exists 77777 : " + normalizedPath);
         }
@@ -326,7 +329,7 @@ public class MinioServiceImpl implements MinioService {
 
                 if (!parentPath.isEmpty()) {
                     String parentObjectName = ensureTrailingSlash(parentPath);
-                    if (!objectExists(parentObjectName)) {
+                    if (!isObjectExists(parentObjectName)) {
                         throw new NoSuchElementException("Родительская папка не существует");
                     }
                 }
