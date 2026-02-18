@@ -1,5 +1,5 @@
-import {API_MOVE_FILES} from "../../../../UrlConstants.jsx";
-import {throwSpecifyException} from "../../../../exception/ThrowSpecifyException.jsx";
+import { API_MOVE_FILES } from "../../../../UrlConstants.jsx";
+import { throwSpecifyException } from "../../../../exception/ThrowSpecifyException.jsx";
 
 
 export const sendMoveObject = async (source, target) => {
@@ -9,9 +9,9 @@ export const sendMoveObject = async (source, target) => {
     }
 
     console.log("Перемещение:");
-    console.log( source + ' --> ' + target);
+    console.log(source + ' --> ' + target);
 
-    const params = new URLSearchParams({from: source, to: target});
+    const params = new URLSearchParams({ from: source, to: target });
 
     const url = `${API_MOVE_FILES}?${params.toString()}`;
 
