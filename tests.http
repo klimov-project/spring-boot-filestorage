@@ -47,7 +47,8 @@ POST {{host_api}}/directory?path=test-folder/
 POST {{host_api}}/directory?path=test-folder/subfolder/
 
 ### Получение содержимого папки1
-GET {{host_api}}/directory?path=/
+GET {{host_api}}/directory?path=test-download/
+Content-Type: {{contentType}}
 
 ### Создание тестовой папки2 "test-download"
 POST {{host_api}}/directory?path=test-download/
@@ -72,7 +73,7 @@ GET {{host_api}}/resource/search?query=test
 
 
 ### Получение информации о папке (path=/ если корневая)
-GET {{host_api}}/resource?path=root-file.txt
+GET {{host_api}}/resource?path=/
 
 ### Создадим файл в существующей папке "test-download"
 POST {{host_api}}/resource?path=test-download/
@@ -108,11 +109,9 @@ DELETE {{host_api}}/resource?path=root-file.txt
 ######  Тестирование перемещения файлов
 ### 1. Создаем тестовую структуру
 POST {{host_api}}/directory?path=test-move-files/
-Accept: application/json
 
 ### 2. Создаем подпапку
 POST {{host_api}}/directory?path=test-move-files/source/
-Accept: application/json
 
 ### 3. Загружаем тестовый файл
 POST {{host_api}}/resource?path=test-move-files/source/
@@ -130,8 +129,13 @@ GET {{host_api}}/resource?path=test-move-files/source/test-file.txt
 Accept: application/json
 
 ### 5. ТЕСТ 1: Переименование файла (rename only)
-POST {{host_api}}/resource/move?from=test-move-files/source/test-file.txt&to=test-move-files/source/renamed-file.txt
-Accept: application/json
+PATCH {{host_api}}/resource/move
+Content-Type: application/json
+
+{
+  "from": "test-move-files/source/test-file.txt",
+  "to": "test-move-files/source/renamed-file.txt"
+}
 
 ### 6. Проверяем переименование
 GET {{host_api}}/directory?path=test-move-files/source/
@@ -142,8 +146,13 @@ POST {{host_api}}/directory?path=test-move-files/destination/
 Accept: application/json
 
 ### 8. ТЕСТ 2: Перемещение файла (move + rename)
-GET {{host_api}}/resource/move?from=test-move-files/source/renamed-file.txt&to=test-move-files/destination/moved-file.txt
-Accept: application/json
+PATCH {{host_api}}/resource/move
+Content-Type: application/json
+
+{
+  "from": "test-move-files/source/renamed-file.txt",
+  "to": "test-move-files/destination/moved-file.txt"
+}
 
 ### 9. Проверяем обе папки
 GET {{host_api}}/directory?path=test-move-files/source/
@@ -158,24 +167,36 @@ Content-Type: multipart/form-data; boundary=boundary
 
 --boundary
 Content-Disposition: form-data; name="files"; filename="existing.txt"
+Content-Type: text/plain
 
 This file already exists.
 --boundary--
 
-GET {{host_api}}/resource/move?from=test-move-files/destination/moved-file.txt&to=test-move-files/destination/existing.txt
-Accept: application/json
+### 11. ТЕСТ 4: Ошибка 409 при перемещении несуществующего файла в уже существующий
+PATCH {{host_api}}/resource/move
+Content-Type: application/json
 
-### 11. ТЕСТ 4: Перемещение директории
+{
+  "from": "test-move-files/source/renamed-file.txt",
+  "to": "test-move-files/destination/existing.txt"
+}
+
+### 12. ТЕСТ 5: Перемещение директории
 POST {{host_api}}/directory?path=test-move-folders/
 Accept: application/json
 
 POST {{host_api}}/directory?path=test-move-folders/original/
 Accept: application/json
 
-GET {{host_api}}/resource/move?from=test-move-folders/original/&to=test-move-folders/moved/
-Accept: application/json
+PATCH {{host_api}}/resource/move
+Content-Type: application/json
 
-### 12. Очистка
+{
+  "from": "test-move-folders/original/",
+  "to": "test-move-folders/moved/"
+}
+
+### 13. Очистка
 DELETE {{host_api}}/resource?path=test-move-files/
 Accept: application/json
 

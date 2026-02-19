@@ -1,11 +1,13 @@
 package com.project.storage.service;
 
 import com.project.entity.MinioObject;
+
 import io.minio.*;
 import io.minio.errors.*;
 import io.minio.http.Method;
 import io.minio.messages.Item;
 import lombok.RequiredArgsConstructor;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,6 +18,7 @@ import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.regex.Pattern;
 
 @RequiredArgsConstructor
 @Service
@@ -204,20 +207,128 @@ public class MinioServiceImpl implements MinioService {
     @Override
     public void renameObject(String oldFullPath, String newFullPath) {
         try {
-            minioClient.copyObject(
-                    CopyObjectArgs.builder()
-                            .bucket(bucket)
-                            .object(newFullPath)
-                            .source(CopySource.builder()
-                                    .bucket(bucket)
-                                    .object(oldFullPath)
-                                    .build())
-                            .build()
-            );
-            deleteObject(oldFullPath);
+            boolean isDirectory = oldFullPath.endsWith("/") || isDirectory(oldFullPath);
+
+            if (isDirectory) {
+                // Для папок: переименовываем все вложенные объекты
+                renameDirectory(oldFullPath, newFullPath);
+            } else {
+                // Для файлов: просто переименовываем
+                renameFile(oldFullPath, newFullPath);
+            }
+
             logger.debug("Объект переименован: {} -> {}", oldFullPath, newFullPath);
         } catch (Exception e) {
+            logger.error("Ошибка при переименовании {} -> {}: {}",
+                    oldFullPath, newFullPath, e.getMessage(), e);
             throw new RuntimeException("renameObject: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Переименование папки и всего её содержимого
+     */
+    private void renameDirectory(String oldFolderPath, String newFolderPath) throws Exception {
+        // Нормализуем пути
+        String oldPrefix = ensureTrailingSlash(oldFolderPath);
+        String newPrefix = ensureTrailingSlash(newFolderPath);
+
+        // Создаём новую папку
+        createFolderInMinio(newPrefix);
+
+        // Получаем все объекты внутри папки (рекурсивно)
+        List<String> objectsToRename = collectAllObjectsRecursive(oldPrefix);
+
+        // Список для хранения скопированных объектов
+        List<String> copiedObjects = new ArrayList<>();
+
+        try {
+            // Копируем каждый объект в новое место
+            for (String oldObjectPath : objectsToRename) {
+                // Заменяем старый префикс на новый
+                String newObjectPath = oldObjectPath.replaceFirst(
+                        Pattern.quote(oldPrefix),
+                        newPrefix
+                );
+
+                // Копируем объект
+                minioClient.copyObject(
+                        CopyObjectArgs.builder()
+                                .bucket(bucket)
+                                .object(newObjectPath)
+                                .source(CopySource.builder()
+                                        .bucket(bucket)
+                                        .object(oldObjectPath)
+                                        .build())
+                                .build()
+                );
+
+                copiedObjects.add(oldObjectPath);
+                logger.debug("Скопирован: {} -> {}", oldObjectPath, newObjectPath);
+            }
+
+            // Если всё скопировалось успешно, удаляем старую папку со всем содержимым
+            deleteObject(oldPrefix);
+
+        } catch (Exception e) {
+            // В случае ошибки пытаемся откатить изменения (удалить скопированное)
+            logger.error("Ошибка при копировании, выполняем откат", e);
+            rollbackRename(newPrefix, copiedObjects);
+            throw e;
+        }
+    }
+
+    /**
+     * Переименование отдельного файла
+     */
+    private void renameFile(String oldFilePath, String newFilePath) throws Exception {
+        // Проверяем существование нового пути
+        if (isObjectExists(newFilePath)) {
+            throw new RuntimeException("Файл с таким именем уже существует: " + newFilePath);
+        }
+
+        // Копируем файл
+        minioClient.copyObject(
+                CopyObjectArgs.builder()
+                        .bucket(bucket)
+                        .object(newFilePath)
+                        .source(CopySource.builder()
+                                .bucket(bucket)
+                                .object(oldFilePath)
+                                .build())
+                        .build()
+        );
+
+        // Удаляем старый файл
+        minioClient.removeObject(
+                RemoveObjectArgs.builder()
+                        .bucket(bucket)
+                        .object(oldFilePath)
+                        .build()
+        );
+    }
+
+    /**
+     * Откат операции переименования при ошибке
+     */
+    private void rollbackRename(String newPrefix, List<String> copiedObjects) {
+        logger.warn("Откат операции переименования для папки: {}", newPrefix);
+
+        for (String oldPath : copiedObjects) {
+            try {
+                String newPath = oldPath.replaceFirst(
+                        Pattern.quote(ensureTrailingSlash(newPrefix)),
+                        ""
+                );
+                minioClient.removeObject(
+                        RemoveObjectArgs.builder()
+                                .bucket(bucket)
+                                .object(newPath)
+                                .build()
+                );
+            } catch (Exception e) {
+                logger.error("Ошибка при откате для объекта: {}", oldPath, e);
+            }
         }
     }
 
