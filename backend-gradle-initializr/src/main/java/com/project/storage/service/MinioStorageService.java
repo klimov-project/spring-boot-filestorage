@@ -11,8 +11,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import lombok.val;
 
 @Service
 public class MinioStorageService implements StorageService {
@@ -50,7 +53,7 @@ public class MinioStorageService implements StorageService {
     @Override
     public ResourceInfo getResourceInfo(Long userId, String relativePath) {
 
-        // Обработка корневой директории
+        // Обработка корневой директории `relativePath === "/"`
         if ("/".equals(relativePath) || relativePath == null || relativePath.isEmpty()) {
             return ResourceInfo.builder()
                     .path("/")
@@ -117,7 +120,7 @@ public class MinioStorageService implements StorageService {
     public ResourceInfo moveResource(Long userId, String fromRelativePath, String toRelativePath) {
 
         try {
-            isMoveAllowed(userId, fromRelativePath, toRelativePath); 
+            isMoveAllowed(userId, fromRelativePath, toRelativePath);
             minioServiceAdapter.renameObject(userId, fromRelativePath, toRelativePath);
             return getResourceInfo(userId, toRelativePath);
         } catch (Exception e) {
@@ -148,9 +151,11 @@ public class MinioStorageService implements StorageService {
 
     @Override
     public List<ResourceInfo> getDirectoryContents(Long userId, String relativePath) {
-        logger.info("User  {} is requesting contents of directory: '{}'", userId, relativePath);
+        logger.info("User {} is requesting contents of directory: '{}'", userId, relativePath);
 
         try {
+            validateIfResourceIsDirectory(userId, relativePath);
+
             List<MinioObject> objects = minioServiceAdapter.listObjects(userId, relativePath);
             return objects.stream()
                     .map(obj -> convertToResourceInfo(userId, obj))
@@ -293,5 +298,22 @@ public class MinioStorageService implements StorageService {
         }
 
         return true;
+    }
+
+    private void validateIfResourceIsDirectory(Long userId, String relativePath) {
+
+        ResourceType reqResourceType = pathValidator.validateAndGetType(relativePath);
+
+        if (reqResourceType == ResourceType.DIRECTORY) {
+            logger.info("User {} is requesting contents of directory: '{}'", userId, relativePath);
+        } else {
+            logger.warn("User {} requested contents of a non-directory resource: '{}'", userId, relativePath);
+            throw new StorageException.InvalidPathException(
+                    "Указанный путь не является директорией: " + relativePath,
+                    userId,
+                    relativePath,
+                    "validateIfResourceIsDirectory"
+            );
+        }
     }
 }

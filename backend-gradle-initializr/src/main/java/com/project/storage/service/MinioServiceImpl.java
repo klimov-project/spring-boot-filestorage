@@ -393,7 +393,7 @@ public class MinioServiceImpl implements MinioService {
 
     @Override
     public MinioObject getObjectInfo(String fullPath) {
-        logger.debug("getObjectInfo:  fullPath = {}", fullPath);
+        logger.debug("getObjectInfo: fullPath = {}", fullPath);
         try {
             StatObjectResponse stat = minioClient.statObject(
                     StatObjectArgs.builder()

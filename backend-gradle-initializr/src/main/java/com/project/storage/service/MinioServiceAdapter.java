@@ -119,9 +119,11 @@ public class MinioServiceAdapter {
             Long userId,
             String relativePath) {
 
-        String fullPath = toFullPath(userId, relativePath);
-
         try {
+            validateRequestedResource(userId, relativePath);
+
+            String fullPath = toFullPath(userId, relativePath);
+            logger.info("listObjects for user {} fullPath: '{}'", userId, fullPath);
             return minioService.listObjects(fullPath);
         } catch (Exception e) {
             throw transformListObjectsException(e, userId, relativePath);
@@ -158,18 +160,11 @@ public class MinioServiceAdapter {
         }
 
         try {
-            // Получаем информацию о ресурсе
-            MinioObject objectInfo = minioService.getObjectInfo(toFullPath(userId, relativePath));
-
             // Проверяем существование объекта
-            if (!minioService.isObjectExists(toFullPath(userId, relativePath))) {
-                throw new StorageException.ResourceNotFoundException(
-                        "Ресурс не найден: " + relativePath,
-                        userId,
-                        relativePath,
-                        "getDownloadResource"
-                );
-            }
+            isObjectExists(userId, relativePath);
+
+            // Получаем информацию о ресурсе
+            MinioObject objectInfo = getObjectInfo(userId, relativePath);
 
             // Определяем тип и готовим результат
             boolean isDirectory = objectInfo.isDirectory() || relativePath.endsWith("/");
@@ -232,6 +227,21 @@ public class MinioServiceAdapter {
         }
 
         return cleanPath.substring(0, lastSlash);
+    }
+
+    /**
+     * Валидация запрашиваемого ресурса
+     */
+    private void validateRequestedResource(Long userId, String relativePath) {
+
+        if (!isObjectExists(userId, relativePath)) {
+            throw new StorageException.ResourceNotFoundException(
+                    "Ресурс не найден: " + relativePath,
+                    userId,
+                    relativePath,
+                    "validateRequestedResource"
+            );
+        }
     }
 
     // ============= ТРАНСФОРМАЦИЯ ИСКЛЮЧЕНИЙ =============
