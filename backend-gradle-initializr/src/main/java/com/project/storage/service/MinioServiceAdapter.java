@@ -6,6 +6,7 @@ import com.project.exception.StorageException;
 import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.io.IOException;
 
 @Component
 public class MinioServiceAdapter {
@@ -137,6 +138,48 @@ public class MinioServiceAdapter {
             return minioService.isObjectExists(fullPath);
         } catch (Exception e) {
             throw transformObjectExistsException(e, userId, relativePath);
+        }
+    }
+
+    /**
+     * Получение ресурса для скачивания с преобразованием исключений
+     */
+    public DownloadService.DownloadResult getDownloadResource(Long userId, String relativePath) throws IOException {
+        logger.info("Adapter: Preparing download for user {} path: {}", userId, relativePath);
+
+        // Валидация пути через адаптер
+        if (relativePath == null || relativePath.trim().isEmpty()) {
+            throw new StorageException.InvalidPathException(
+                    "Путь не может быть пустым",
+                    userId,
+                    relativePath,
+                    "getDownloadResource"
+            );
+        }
+
+        try {
+            // Получаем информацию о ресурсе
+            MinioObject objectInfo = minioService.getObjectInfo(toFullPath(userId, relativePath));
+
+            // Проверяем существование объекта
+            if (!minioService.isObjectExists(toFullPath(userId, relativePath))) {
+                throw new StorageException.ResourceNotFoundException(
+                        "Ресурс не найден: " + relativePath,
+                        userId,
+                        relativePath,
+                        "getDownloadResource"
+                );
+            }
+
+            // Определяем тип и готовим результат
+            boolean isDirectory = objectInfo.isDirectory() || relativePath.endsWith("/");
+
+            // Создаем DownloadResult через вызов сервиса скачивания
+            // Здесь мы не создаем сам ресурс, а возвращаем информацию для MinioDownloadService
+            return new DownloadService.DownloadResult(null, null, false); // Заглушка, реальный результат создается в MinioDownloadService
+
+        } catch (Exception e) {
+            throw transformGetDownloadResourceException(e, userId, relativePath);
         }
     }
 
@@ -408,6 +451,41 @@ public class MinioServiceAdapter {
                 userId,
                 relativePath,
                 "getDownloadUrl"
+        );
+    }
+
+    private RuntimeException transformGetDownloadResourceException(
+            Exception e, Long userId, String relativePath) {
+
+        String errorMessage = e.getMessage();
+        logger.debug("Transform getDownloadResource exception: {}", errorMessage);
+
+        if (errorMessage != null) {
+            if (errorMessage.contains("Ресурс не найден")
+                    || errorMessage.contains("NoSuchKey")
+                    || errorMessage.contains("Not Found")) {
+                return new StorageException.ResourceNotFoundException(
+                        "Ресурс не найден: " + relativePath,
+                        userId,
+                        relativePath,
+                        "getDownloadResource"
+                );
+            } else if (errorMessage.contains("Невалидный путь")
+                    || errorMessage.contains("Invalid path")) {
+                return new StorageException.InvalidPathException(
+                        "Невалидный путь: " + relativePath,
+                        userId,
+                        relativePath,
+                        "getDownloadResource"
+                );
+            }
+        }
+
+        return new StorageException.StorageOperationException(
+                "Ошибка при подготовке скачивания: " + e.getMessage(),
+                userId,
+                relativePath,
+                "getDownloadResource"
         );
     }
 }

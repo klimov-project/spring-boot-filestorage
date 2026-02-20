@@ -116,7 +116,7 @@ public class MinioStorageService implements StorageService {
     @Override
     public ResourceInfo moveResource(Long userId, String fromRelativePath, String toRelativePath) {
 
-        try { 
+        try {
             isMoveAllowed(userId, fromRelativePath, toRelativePath); 
             minioServiceAdapter.renameObject(userId, fromRelativePath, toRelativePath);
             return getResourceInfo(userId, toRelativePath);
