@@ -58,6 +58,10 @@ export const SelectHeader = () => {
     setSelectedIds([]);
   };
 
+  function normalizePath(path) {
+    return path.startsWith('/') ? path.slice(1) : path;
+  }
+
   function handleDelete() {
     deleteObject(selectedIds);
     clearSelectionMode();
@@ -193,6 +197,13 @@ export const SelectHeader = () => {
       };
     }
   }, [handleContextMenu, handleClose]);
+
+  useEffect(() => {
+    const fixed = selectedIds.map(normalizePath);
+    if (JSON.stringify(fixed) !== JSON.stringify(selectedIds)) {
+      setSelectedIds(fixed);
+    }
+  }, [selectedIds]);
 
   return (
     <Container
