@@ -10,6 +10,8 @@ import com.project.storage.model.ResourceType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.project.exception.StorageException;
+
 @Component
 public class PathValidator {
 
@@ -17,6 +19,7 @@ public class PathValidator {
     private static final int MAX_NAME_LENGTH = 128;
 
     private static final Logger logger = LoggerFactory.getLogger(PathValidator.class);
+
     private boolean validatePath(String name) {
         if (!StringUtils.hasText(name)) {
             return false;
@@ -77,23 +80,19 @@ public class PathValidator {
 
         String path = rawPath.trim();
 
-        logger.info("String path: '{}'", path);
         // Если путь равен "/", то это корень пользовательской папки
         if (path.equals("/")) {
             return ResourceType.DIRECTORY;
         }
-        logger.info("path.equals PASSED path: '{}'", path);
 
         // Путь не должен начинаться с / или \ (относительный путь от корня пользователя)
         if (path.startsWith("/") || path.startsWith("\\")) {
             return null;
         }
 
-        logger.info("path.startsWith PASSED2 path: '{}'", path);
         // Проверяем завершающий слэш для определения типа
         boolean isDirectory = path.endsWith("/");
 
-        logger.info("boolean isDirectory PASSED3 path: '{}'", path);
         // Базовые проверки безопасности пути
         try {
             Path normalized = Paths.get(path).normalize();
@@ -118,6 +117,37 @@ public class PathValidator {
             }
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    /**
+     * Строго валидирует путь и выбрасывает исключение, если путь невалиден или
+     * не соответствует ожидаемому типу.
+     *
+     * @param path путь для проверки
+     * @param expectedType ожидаемый тип ресурса (ResourceType.FILE или
+     * ResourceType.DIRECTORY)
+     * @param userId id пользователя (для логирования/ошибок)
+     * @param operationName имя операции (для ошибок)
+     */
+
+    public void assertValidPathOrThrow(String path, ResourceType expectedType, Long userId, String operationName) {
+        ResourceType actualType = validateAndGetType(path);
+        if (actualType == null) {
+            throw new StorageException.InvalidPathException(
+                    "Некорректный путь: " + path,
+                    userId,
+                    path,
+                    operationName
+            );
+        }
+        if (expectedType != null && actualType != expectedType) {
+            throw new StorageException.InvalidPathException(
+                    "Ожидался ресурс типа " + expectedType + ", но получен " + actualType + ": " + path,
+                    userId,
+                    path,
+                    operationName
+            );
         }
     }
 

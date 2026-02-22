@@ -52,9 +52,10 @@ public class MinioDownloadService implements DownloadService {
         logger.info("User {}: Preparing download for path: {}", userId, path);
 
         try {
-            ResourceType downloadingType = pathValidator.validateAndGetType(path);
+            // 1. Валидация пути (тип не известен заранее, поэтому expectedType = null)
+            pathValidator.assertValidPathOrThrow(path, null, userId, "getDownloadResource");
 
-            // Проверяем существование объекта
+            // 2. Проверяем существование объекта
             if (!minioServiceAdapter.isObjectExists(userId, path)) {
                 throw new StorageException.ResourceNotFoundException(
                         "Ресурс не найден: " + path,
@@ -64,20 +65,22 @@ public class MinioDownloadService implements DownloadService {
                 );
             }
 
-            // Получаем информацию о ресурсе через адаптер
+            // 3. Получаем информацию о ресурсе через адаптер
             MinioObject objectInfo = minioServiceAdapter.getObjectInfo(userId, path);
 
-            // Определяем тип ресурса
+            // 4. Определяем тип ресурса
             boolean isDirectory = objectInfo.isDirectory() || path.endsWith("/");
 
-            if (isDirectory && downloadingType == ResourceType.FILE) {
+            // 5. Повторная строгая сверка типа (на случай рассинхрона с Minio)
+            ResourceType requestedType = pathValidator.validateAndGetType(path);
+            if (isDirectory && requestedType == ResourceType.FILE) {
                 throw new StorageException.InvalidPathException(
                         "Ожидался файл, но найден каталог: " + path,
                         userId,
                         path,
                         "getDownloadResource"
                 );
-            } else if (!isDirectory && downloadingType == ResourceType.DIRECTORY) {
+            } else if (!isDirectory && requestedType == ResourceType.DIRECTORY) {
                 throw new StorageException.InvalidPathException(
                         "Ожидался каталог, но найден файл: " + path,
                         userId,
@@ -86,19 +89,18 @@ public class MinioDownloadService implements DownloadService {
                 );
             }
 
-            // Обработка файла
+            // 6. Скачивание
             if (!isDirectory) {
                 logger.debug("User {}: Downloading file: {}", userId, path);
                 return downloadFileFromMinio(userId, path, objectInfo.getName());
-            } // Обработка папки
-            else {
+            } else {
                 logger.debug("User {}: Downloading directory as zip: {}", userId, path);
                 return downloadDirectoryAsZip(userId, path, objectInfo.getName());
             }
         } catch (Exception e) {
             logger.error("Unexpected error for user {}: {}", userId, e.getMessage(), e);
-            throw new StorageException.StorageOperationException(
-                    "Неожиданная ошибка при скачивании: " + e.getMessage(),
+            throw new StorageException.InvalidPathException(
+                    "Невалидный или отсутствующий путь: " + path,
                     userId,
                     path,
                     "getDownloadResource"
@@ -109,7 +111,8 @@ public class MinioDownloadService implements DownloadService {
     /**
      * Скачивание файла из MinIO
      */
-    private DownloadResult downloadFileFromMinio(Long userId, String relativePath, String originalName) {
+    private DownloadResult downloadFileFromMinio(Long userId, String relativePath, String originalName)
+            throws Exception {
 
         String fullPath = getFullPathForMinio(userId, relativePath);
 
@@ -149,7 +152,8 @@ public class MinioDownloadService implements DownloadService {
     /**
      * Скачивание папки как ZIP архива из MinIO
      */
-    private DownloadResult downloadDirectoryAsZip(Long userId, String relativePath, String folderName) {
+    private DownloadResult downloadDirectoryAsZip(Long userId, String relativePath, String folderName)
+            throws Exception {
 
         Path tempZip = null;
         try {
@@ -188,7 +192,7 @@ public class MinioDownloadService implements DownloadService {
                 try {
                     Files.deleteIfExists(tempZip);
                 } catch (Exception ex) {
-                    throw new RuntimeException("Failed to delete temp zip file: " + tempZip, ex);
+                    logger.warn("Failed to delete temp file: {}", tempZip, ex);
                 }
             }
 
@@ -205,7 +209,7 @@ public class MinioDownloadService implements DownloadService {
     /**
      * Чтение всех байт из InputStream
      */
-    private byte[] readAllBytes(InputStream inputStream) {
+    private byte[] readAllBytes(InputStream inputStream) throws Exception {
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         byte[] data = new byte[8192];
         int nRead;
@@ -223,6 +227,7 @@ public class MinioDownloadService implements DownloadService {
         List<MinioFileInfo> files = new ArrayList<>();
 
         try {
+
             List<ResourceInfo> contents = storageService.getDirectoryContents(userId, relativePath);
 
             for (ResourceInfo item : contents) {
@@ -256,7 +261,7 @@ public class MinioDownloadService implements DownloadService {
     /**
      * Добавление файла из MinIO в ZIP архив
      */
-    private void addFileToZip(ZipOutputStream zos, MinioFileInfo fileInfo) {
+    private void addFileToZip(ZipOutputStream zos, MinioFileInfo fileInfo) throws Exception {
         String fullPath = getFullPathForMinio(fileInfo.getUserId(), fileInfo.getRelativePath());
 
         try (InputStream fileStream = minioClient.getObject(
@@ -349,4 +354,5 @@ public class MinioDownloadService implements DownloadService {
             return size;
         }
     }
+
 }

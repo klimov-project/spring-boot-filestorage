@@ -1,7 +1,7 @@
-import {API_DOWNLOAD_FILES} from "../../../../UrlConstants.jsx";
-import {extractSimpleName} from "../../../util/Utils.js";
-import {sendGetObjectStats} from "./SendGetObjectStats.js";
-import {throwSpecifyException} from "../../../../exception/ThrowSpecifyException.jsx";
+import { API_DOWNLOAD_FILES } from "../../../../UrlConstants.jsx";
+import { extractSimpleName } from "../../../util/Utils.js";
+import { sendGetObjectStats } from "./SendGetObjectStats.js";
+import { throwSpecifyException } from "../../../../exception/ThrowSpecifyException.jsx";
 
 
 export const sendDownloadFile = async (downloadTask, updateTask, updateDownloadTask, size, updateDownloadSpeed) => {
@@ -12,7 +12,7 @@ export const sendDownloadFile = async (downloadTask, updateTask, updateDownloadT
 
     const filePath = downloadTask.operation.source;
 
-    const params = new URLSearchParams({path: filePath});
+    const params = new URLSearchParams({ path: filePath });
 
     const fetchUrl = `${API_DOWNLOAD_FILES}?${params.toString()}`;
 
@@ -24,7 +24,7 @@ export const sendDownloadFile = async (downloadTask, updateTask, updateDownloadT
         try {
             let stats = await sendGetObjectStats(filePath);
             size = stats.size;
-        } catch (e){
+        } catch (e) {
             console.log('Не получилось извлечь размер папки')
             console.log(e);
         }
@@ -71,7 +71,7 @@ export const sendDownloadFile = async (downloadTask, updateTask, updateDownloadT
 
     while (true) {
         count++;
-        const {done, value} = await reader.read();
+        const { done, value } = await reader.read();
         if (done) break;
 
         chunks.push(value);

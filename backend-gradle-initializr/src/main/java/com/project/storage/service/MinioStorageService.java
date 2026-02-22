@@ -154,8 +154,9 @@ public class MinioStorageService implements StorageService {
         logger.info("User {} is requesting contents of directory: '{}'", userId, relativePath);
 
         try {
-            validateIfResourceIsDirectory(userId, relativePath);
-
+            // 1. Валидация пути (тип известен заранее, поэтому expectedType = ResourceType.DIRECTORY)
+            pathValidator.assertValidPathOrThrow(relativePath, ResourceType.DIRECTORY, userId, "getDirectoryContents");
+ 
             List<MinioObject> objects = minioServiceAdapter.listObjects(userId, relativePath);
             return objects.stream()
                     .map(obj -> convertToResourceInfo(userId, obj))
@@ -298,22 +299,5 @@ public class MinioStorageService implements StorageService {
         }
 
         return true;
-    }
-
-    private void validateIfResourceIsDirectory(Long userId, String relativePath) {
-
-        ResourceType reqResourceType = pathValidator.validateAndGetType(relativePath);
-
-        if (reqResourceType == ResourceType.DIRECTORY) {
-            logger.info("User {} is requesting contents of directory: '{}'", userId, relativePath);
-        } else {
-            logger.warn("User {} requested contents of a non-directory resource: '{}'", userId, relativePath);
-            throw new StorageException.InvalidPathException(
-                    "Указанный путь не является директорией: " + relativePath,
-                    userId,
-                    relativePath,
-                    "validateIfResourceIsDirectory"
-            );
-        }
     }
 }
