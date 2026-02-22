@@ -7,9 +7,61 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import com.project.storage.model.ResourceType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
 public class PathValidator {
+
+    private static final String INVALID_CHARS_REGEX = "[/\\\\?*:\"<>|]";
+    private static final int MAX_NAME_LENGTH = 128;
+
+    private static final Logger logger = LoggerFactory.getLogger(PathValidator.class);
+    private boolean validatePath(String name) {
+        if (!StringUtils.hasText(name)) {
+            return false;
+        }
+        if (name.length() > MAX_NAME_LENGTH) {
+            return false;
+        }
+        if (name.equals(".") || name.equals("..")) {
+            return false;
+        }
+        if (name.trim().isEmpty()) {
+            return false;
+        }
+        if (name.startsWith(".")) {
+            return false; // скрытые файлы/папки не разрешаем
+
+        }
+        if (name.endsWith(" ") || name.endsWith(".")) {
+            return false;
+        }
+        if (name.matches(".*" + INVALID_CHARS_REGEX + ".*")) {
+            return false;
+        }
+        for (char c : name.toCharArray()) {
+            if (c < 32) {
+                return false; // Символы управления
+
+            }
+        }
+        return true;
+    }
+
+    public boolean validateFilePath(String path) {
+        String name = extractName(path);
+        return validatePath(name);
+    }
+
+    public boolean validateFolderPath(String path) {
+        String cleanPath = path;
+        if (cleanPath != null && cleanPath.endsWith("/")) {
+            cleanPath = cleanPath.substring(0, cleanPath.length() - 1);
+        }
+        String name = extractName(cleanPath);
+        return validatePath(name);
+    }
 
     /**
      * Проверяет, является ли путь корректным и определяет тип ресурса
@@ -18,25 +70,30 @@ public class PathValidator {
      * @return тип ресурса или null если путь невалидный
      */
     public ResourceType validateAndGetType(String rawPath) {
+        logger.info("validateAndGetType rawPath: '{}'", rawPath);
         if (!StringUtils.hasText(rawPath)) {
             return null;
         }
 
         String path = rawPath.trim();
 
+        logger.info("String path: '{}'", path);
         // Если путь равен "/", то это корень пользовательской папки
         if (path.equals("/")) {
             return ResourceType.DIRECTORY;
         }
+        logger.info("path.equals PASSED path: '{}'", path);
 
         // Путь не должен начинаться с / или \ (относительный путь от корня пользователя)
         if (path.startsWith("/") || path.startsWith("\\")) {
             return null;
         }
 
+        logger.info("path.startsWith PASSED2 path: '{}'", path);
         // Проверяем завершающий слэш для определения типа
         boolean isDirectory = path.endsWith("/");
 
+        logger.info("boolean isDirectory PASSED3 path: '{}'", path);
         // Базовые проверки безопасности пути
         try {
             Path normalized = Paths.get(path).normalize();
@@ -49,8 +106,14 @@ public class PathValidator {
 
             // Для директории возвращаем тип с учетом слэша
             if (isDirectory) {
+                if (!validateFolderPath(path)) {
+                    return null;
+                }
                 return ResourceType.DIRECTORY;
             } else {
+                if (!validateFilePath(path)) {
+                    return null;
+                }
                 return ResourceType.FILE;
             }
         } catch (Exception e) {
