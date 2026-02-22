@@ -274,7 +274,7 @@ public class MinioServiceAdapter {
 
         if (errorMessage != null) {
             if (errorMessage.contains("Папка уже существует")
-                    || errorMessage.contains("Path already exists")) {
+                    || errorMessage.contains("Path already exists") || errorMessage.contains("already exists")) {
                 return new StorageException.ResourceAlreadyExistsException(
                         "Папка уже существует: " + relativePath,
                         userId,

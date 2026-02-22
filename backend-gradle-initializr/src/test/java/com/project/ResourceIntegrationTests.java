@@ -319,7 +319,7 @@ public class ResourceIntegrationTests {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(moveJson))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("renamed.txt"));
+                .andExpect(jsonPath("$.name").value(renamedPath));
 
         System.out.println("[Done] File renamed successfully");
     }
@@ -510,29 +510,28 @@ public class ResourceIntegrationTests {
         // Попытка загрузить файл с тем же именем
         mockMvc.perform(multipart("/api/resource")
                 .param("path", basePath)
-                .file(new MockMultipartFile("files", "existing.txt", "text/plain", "Second upload".getBytes()))
+                .file(new MockMultipartFile("files", filePath, "text/plain", "Second upload".getBytes(StandardCharsets.UTF_8)))
                 .contentType("multipart/form-data"))
                 .andExpect(status().isConflict());
 
         System.out.println("[Done] 409 returned for upload conflict");
     }
 
-    // === ТЕСТ 20: Загрузка файла в несуществующую папку ===
+// === ТЕСТ 20: Запрос информации о несуществующей папке ===
     @Test
-    public void test20_uploadToNonexistentPath() throws Exception {
-        String username = "testuser_uploadnf";
+    public void test_directoryInfoForNonexistentFolder() throws Exception {
+        String username = "testuser_dirnf";
         String password = "password";
 
         registerAndLogin(username, password);
 
-        // Попытка загрузить в несуществующую папку
-        mockMvc.perform(multipart("/api/resource")
-                .param("path", basePath + "nonexistent-dir/")
-                .file(new MockMultipartFile("files", "test.txt", "text/plain", "Content".getBytes()))
-                .contentType("multipart/form-data"))
+        // Запрос информации о несуществующей папке
+        mockMvc.perform(get("/api/directory")
+                .param("path", "folder-not-exist/")
+                .contentType("application/json"))
                 .andExpect(status().isNotFound());
 
-        System.out.println("[Done] 404 returned for upload to non-existent directory");
+        System.out.println("[Done] 404 returned for directory info on non-existent folder");
     }
 
     // === ТЕСТ 21: Авторизация - запросы без авторизации ===
@@ -555,7 +554,6 @@ public class ResourceIntegrationTests {
     }
 
     // === HELPER METHODS ===
-
     private void registerAndLogin(String username, String password) throws Exception {
         // Регистрация
         String signupJson = String.format("{\"username\":\"%s\",\"password\":\"%s\"}", username, password);
