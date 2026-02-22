@@ -76,9 +76,6 @@ public class MinioServiceImpl implements MinioService {
     @Override
     public void createFolder(String fullPath, boolean strict) {
         try {
-            // TODO: Валидация пути (например, запрещённые символы и т.д.)
-            // pathValidator.validateFolderPath(fullPath);
-
             // Проверяем, существует ли уже объект с таким именем 
             boolean exists = isObjectExists(fullPath);
 
@@ -377,17 +374,30 @@ public class MinioServiceImpl implements MinioService {
     }
 
     @Override
-    public boolean isObjectExists(String fullPath) {
+    public boolean isObjectExists(String fullPath) throws Exception {
         try {
+            logger.debug("Проверка существования объекта в Minio: {}", fullPath);
             minioClient.statObject(
                     StatObjectArgs.builder()
                             .bucket(bucket)
                             .object(fullPath)
                             .build()
             );
+            logger.debug("Объект найден: {}", fullPath);
             return true;
+        } catch (ErrorResponseException e) {
+            // Только NoSuchKey означает "не существует"
+            if (e.errorResponse().code().equals("NoSuchKey")) {
+                logger.debug("Объект не существует: {}", fullPath);
+                return false;
+            }
+            // Любая другая ошибка MinIO - пробрасываем дальше
+            logger.error("Ошибка MinIO при проверке объекта {}: {}", fullPath, e.getMessage());
+            throw e;
         } catch (Exception e) {
-            return false;
+            // Другие ошибки (сеть, таймаут и т.д.) - пробрасываем
+            logger.error("Ошибка при проверке объекта {}: {}", fullPath, e.getMessage());
+            throw e;
         }
     }
 

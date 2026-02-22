@@ -276,7 +276,7 @@ public class ResourceIntegrationTests {
 
         // Скачивание папки
         mockMvc.perform(get("/api/resource/download")
-                .param("path", dirPath))
+                .param("path", dirPath + "file.txt"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType("application/octet-stream"));
 

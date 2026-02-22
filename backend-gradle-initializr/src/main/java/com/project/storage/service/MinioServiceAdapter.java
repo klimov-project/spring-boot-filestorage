@@ -133,7 +133,7 @@ public class MinioServiceAdapter {
     /**
      * Проверка существования объекта с преобразованием исключений
      */
-    public boolean isObjectExists(Long userId, String relativePath) {
+    public boolean isObjectExists(Long userId, String relativePath) throws Exception {
         String fullPath = toFullPath(userId, relativePath);
 
         try {

@@ -43,6 +43,9 @@ public class MinioStorageService implements StorageService {
     public ResourceInfo createDirectory(Long userId, String relativePath) {
 
         try {
+            // Валидация пути (тип известен заранее, поэтому expectedType = ResourceType.DIRECTORY)
+            pathValidator.assertValidPathOrThrow(relativePath, ResourceType.DIRECTORY, userId, "createDirectory");
+
             minioServiceAdapter.createFolder(userId, relativePath);
             return getResourceInfo(userId, relativePath);
         } catch (Exception e) {
@@ -64,6 +67,10 @@ public class MinioStorageService implements StorageService {
         }
 
         try {
+
+            // Валидация пути (тип не известен заранее, поэтому expectedType = null)
+            pathValidator.assertValidPathOrThrow(relativePath, null, userId, "getResourceInfo");
+
             MinioObject object = minioServiceAdapter.getObjectInfo(userId, relativePath);
             return convertToResourceInfo(userId, object);
         } catch (Exception e) {
@@ -94,6 +101,12 @@ public class MinioStorageService implements StorageService {
             }
 
             logger.debug("minioServiceAdapter.uploadFiles destinationRelativePath: {}", destinationRelativePath);
+
+            // Валидация пути если не загружаем в корень (тип известен заранее, поэтому expectedType = ResourceType.DIRECTORY)
+            if (!"".equals(destinationRelativePath)) {
+                pathValidator.assertValidPathOrThrow(destinationRelativePath, ResourceType.DIRECTORY, userId, "uploadFiles");
+            }
+
             List<MinioObject> uploaded = minioServiceAdapter.uploadFiles(userId, destinationRelativePath, files);
 
             return uploaded.stream()
@@ -108,6 +121,10 @@ public class MinioStorageService implements StorageService {
     public void deleteResource(Long userId, String relativePath) {
 
         try {
+
+            // Валидация пути (тип удаляемого ресурса не известен заранее, поэтому expectedType = null)
+            pathValidator.assertValidPathOrThrow(relativePath, null, userId, "deleteResource");
+
             // Проверяем существование перед удалением (выбросит исключение если не найдено)
             minioServiceAdapter.getObjectInfo(userId, relativePath);
             minioServiceAdapter.deleteObject(userId, relativePath);
@@ -154,9 +171,9 @@ public class MinioStorageService implements StorageService {
         logger.info("User {} is requesting contents of directory: '{}'", userId, relativePath);
 
         try {
-            // 1. Валидация пути (тип известен заранее, поэтому expectedType = ResourceType.DIRECTORY)
+            // Валидация пути (тип известен заранее, поэтому expectedType = ResourceType.DIRECTORY)
             pathValidator.assertValidPathOrThrow(relativePath, ResourceType.DIRECTORY, userId, "getDirectoryContents");
- 
+
             List<MinioObject> objects = minioServiceAdapter.listObjects(userId, relativePath);
             return objects.stream()
                     .map(obj -> convertToResourceInfo(userId, obj))
@@ -267,6 +284,11 @@ public class MinioStorageService implements StorageService {
     }
 
     private boolean isMoveAllowed(Long userId, String fromPath, String toPath) {
+
+        // Валидация пути (тип не известен заранее, поэтому expectedType = null)
+        pathValidator.assertValidPathOrThrow(fromPath, null, userId, "moveResource");
+        pathValidator.assertValidPathOrThrow(toPath, null, userId, "moveResource");
+
         // Проверяем, что не пытаются переместить папку внутрь самой себя или её подпапки
         if (toPath.startsWith(fromPath)) {
             throw new StorageException.InvalidPathException(
@@ -296,6 +318,17 @@ public class MinioStorageService implements StorageService {
                     "moveResource"
             );
 
+        }
+
+        ResourceType fromType = pathValidator.validateAndGetType(fromPath);
+        ResourceType toType = pathValidator.validateAndGetType(toPath);
+        if (fromType != toType) {
+            throw new StorageException.InvalidPathException(
+                    "Тип ресурса не совпадает при перемещении: " + fromType + " -> " + toType,
+                    userId,
+                    toPath,
+                    "moveResource"
+            );
         }
 
         return true;

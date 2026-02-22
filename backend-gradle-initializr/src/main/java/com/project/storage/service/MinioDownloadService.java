@@ -4,8 +4,8 @@ import com.project.entity.MinioObject;
 import com.project.exception.StorageException;
 import com.project.storage.dto.ResourceInfo;
 import com.project.storage.util.PathValidator;
-import io.minio.GetObjectArgs;
-import io.minio.MinioClient;
+import io.minio.*;
+import io.minio.errors.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ByteArrayResource;
@@ -52,18 +52,28 @@ public class MinioDownloadService implements DownloadService {
         logger.info("User {}: Preparing download for path: {}", userId, path);
 
         try {
-            // 1. Валидация пути (тип не известен заранее, поэтому expectedType = null)
+            // 1. Валидация пути
             pathValidator.assertValidPathOrThrow(path, null, userId, "getDownloadResource");
 
             // 2. Проверяем существование объекта
-            if (!minioServiceAdapter.isObjectExists(userId, path)) {
-                throw new StorageException.ResourceNotFoundException(
-                        "Ресурс не найден: " + path,
+            try {
+                if (!minioServiceAdapter.isObjectExists(userId, path)) {
+                    throw new StorageException.ResourceNotFoundException(
+                            "Ресурс не найден: " + path,
+                            userId,
+                            path,
+                            "getDownloadResource"
+                    );
+                }
+            } catch (ErrorResponseException e) {
+                // Если это не NoSuchKey, а другая ошибка MinIO
+                throw new StorageException.InvalidPathException(
+                        "Ошибка доступа к ресурсу: " + e.getMessage(),
                         userId,
                         path,
                         "getDownloadResource"
                 );
-            }
+            } 
 
             // 3. Получаем информацию о ресурсе через адаптер
             MinioObject objectInfo = minioServiceAdapter.getObjectInfo(userId, path);
@@ -97,8 +107,11 @@ public class MinioDownloadService implements DownloadService {
                 logger.debug("User {}: Downloading directory as zip: {}", userId, path);
                 return downloadDirectoryAsZip(userId, path, objectInfo.getName());
             }
+        } catch (StorageException.ResourceNotFoundException e) {
+            // пробрасываем дальше
+            throw e;
         } catch (Exception e) {
-            logger.error("Unexpected error for user {}: {}", userId, e.getMessage(), e);
+            logger.error("Error for user {}: {}", userId, e.getMessage(), e);
             throw new StorageException.InvalidPathException(
                     "Невалидный или отсутствующий путь: " + path,
                     userId,
@@ -309,6 +322,8 @@ public class MinioDownloadService implements DownloadService {
     @Override
     public String getDirectDownloadUrl(Long userId, String path) {
         try {
+            // Валидация пути (тип удаляемого ресурса не известен заранее, поэтому expectedType = null)
+            pathValidator.assertValidPathOrThrow(path, null, userId, "getDirectDownloadUrl");
             return minioServiceAdapter.getDownloadUrl(userId, path);
         } catch (Exception e) {
             logger.error("Unexpected error generating download URL", e);
