@@ -3,6 +3,8 @@ import { throwSpecifyException } from "../../../../exception/ThrowSpecifyExcepti
 import { mapToFrontFormat } from "../../../util/FormatMapper.js";
 
 export const sendGetFolderContent = async (folderName = "", options = {}) => {
+    const normalizedFolderName = folderName || "/";
+
     // Мок-режим
     if (import.meta.env.VITE_MOCK_FETCH_CALLS) {
         console.log("📦 [MOCK] Get folder content:", folderName || "root");
@@ -24,9 +26,8 @@ export const sendGetFolderContent = async (folderName = "", options = {}) => {
     }
 
     console.log(`📂 Запрос содержимого: "${folderName || 'корень'}"`);
-
-    const params = new URLSearchParams({ path: folderName });
-    const url = `${API_DIRECTORY}?${params.toString()}`;
+    const params = new URLSearchParams({ path: normalizedFolderName });
+    const url = `${API_DIRECTORY}?${params}`;
 
     const response = await fetch(url, {
         method: 'GET',
