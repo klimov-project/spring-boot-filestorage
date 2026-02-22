@@ -73,7 +73,7 @@ public class MinioDownloadService implements DownloadService {
                         path,
                         "getDownloadResource"
                 );
-            } 
+            }
 
             // 3. Получаем информацию о ресурсе через адаптер
             MinioObject objectInfo = minioServiceAdapter.getObjectInfo(userId, path);

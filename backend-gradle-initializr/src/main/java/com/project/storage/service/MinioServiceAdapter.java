@@ -3,6 +3,8 @@ package com.project.storage.service;
 import java.util.List;
 import com.project.entity.MinioObject;
 import com.project.exception.StorageException;
+import io.minio.*;
+import io.minio.errors.*;
 import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -138,6 +140,13 @@ public class MinioServiceAdapter {
 
         try {
             return minioService.isObjectExists(fullPath);
+        } catch (ErrorResponseException e) {
+            // Трансформируем только если это не NoSuchKey
+            if (!e.errorResponse().code().equals("NoSuchKey")) {
+                throw transformObjectExistsException(e, userId, relativePath);
+            }
+            // NoSuchKey обрабатывается в isObjectExists и возвращает false
+            throw e;
         } catch (Exception e) {
             throw transformObjectExistsException(e, userId, relativePath);
         }
@@ -233,10 +242,22 @@ public class MinioServiceAdapter {
      * Валидация запрашиваемого ресурса
      */
     private void validateRequestedResource(Long userId, String relativePath) {
-
-        if (!isObjectExists(userId, relativePath)) {
-            throw new StorageException.ResourceNotFoundException(
-                    "Ресурс не найден: " + relativePath,
+        try {
+            if (!isObjectExists(userId, relativePath)) {
+                throw new StorageException.ResourceNotFoundException(
+                        "Ресурс не найден: " + relativePath,
+                        userId,
+                        relativePath,
+                        "validateRequestedResource"
+                );
+            }
+        } catch (StorageException e) {
+            // Пробрасываем наши исключения
+            throw e;
+        } catch (Exception e) {
+            // Другие ошибки оборачиваем
+            throw new StorageException.InvalidPathException(
+                    "Ошибка при проверке существования ресурса: " + e.getMessage(),
                     userId,
                     relativePath,
                     "validateRequestedResource"
@@ -428,14 +449,23 @@ public class MinioServiceAdapter {
         );
     }
 
-    private RuntimeException transformObjectExistsException(
-            Exception e, Long userId, String relativePath) {
+    private Exception transformObjectExistsException(Exception e, Long userId, String relativePath) {
+        if (e instanceof ErrorResponseException ere) {
+            String errorCode = ere.errorResponse().code();
 
-        return new StorageException.StorageOperationException(
-                "Ошибка при проверке существования объекта: " + e.getMessage(),
+            return new StorageException.InvalidPathException(
+                    "Ошибка MinIO при проверке существования ресурса (код: " + errorCode + "): " + e.getMessage(),
+                    userId,
+                    relativePath,
+                    "checkObjectExists"
+            );
+        }
+
+        return new StorageException.InvalidPathException(
+                "Ошибка при проверке существования ресурса: " + e.getMessage(),
                 userId,
                 relativePath,
-                "objectExists"
+                "checkObjectExists"
         );
     }
 

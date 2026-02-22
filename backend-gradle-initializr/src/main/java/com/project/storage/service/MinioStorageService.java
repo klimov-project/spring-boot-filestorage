@@ -2,6 +2,8 @@ package com.project.storage.service;
 
 import com.project.entity.MinioObject;
 import com.project.exception.StorageException;
+import io.minio.*;
+import io.minio.errors.*;
 import com.project.storage.dto.ResourceInfo;
 import com.project.storage.model.ResourceType;
 import com.project.storage.util.PathValidator;
@@ -284,53 +286,79 @@ public class MinioStorageService implements StorageService {
     }
 
     private boolean isMoveAllowed(Long userId, String fromPath, String toPath) {
+        try {
+            // Валидация пути (тип не известен заранее, поэтому expectedType = null)
+            pathValidator.assertValidPathOrThrow(fromPath, null, userId, "moveResource");
+            pathValidator.assertValidPathOrThrow(toPath, null, userId, "moveResource");
 
-        // Валидация пути (тип не известен заранее, поэтому expectedType = null)
-        pathValidator.assertValidPathOrThrow(fromPath, null, userId, "moveResource");
-        pathValidator.assertValidPathOrThrow(toPath, null, userId, "moveResource");
+            // Проверяем, что не пытаются переместить папку внутрь самой себя или её подпапки
+            if (toPath.startsWith(fromPath)) {
+                throw new StorageException.InvalidPathException(
+                        "Нельзя переместить папку внутрь самой себя или её подпапки",
+                        userId,
+                        toPath,
+                        "moveResource"
+                );
+            }
 
-        // Проверяем, что не пытаются переместить папку внутрь самой себя или её подпапки
-        if (toPath.startsWith(fromPath)) {
+            // Проверяем существование исходного ресурса
+            try {
+                if (!minioServiceAdapter.isObjectExists(userId, fromPath)) {
+                    throw new StorageException.ResourceNotFoundException(
+                            "Исходный ресурс не существует: " + fromPath,
+                            userId,
+                            fromPath,
+                            "moveResource"
+                    );
+                }
+            } catch (Exception e) {
+                // Любая ошибка при проверке существования (кроме NoSuchKey) пробрасывается как есть
+                throw e;
+            }
+
+            // Проверяем отсутствие целевого ресурса
+            try {
+                if (minioServiceAdapter.isObjectExists(userId, toPath)) {
+                    throw new StorageException.ResourceAlreadyExistsException(
+                            "Ресурс уже существует: " + toPath,
+                            userId,
+                            toPath,
+                            "moveResource"
+                    );
+                }
+            } catch (Exception e) {
+                // Любая ошибка при проверке существования целевого ресурса
+                throw new StorageException.InvalidPathException(
+                        "Ошибка при проверке целевого ресурса: " + e.getMessage(),
+                        userId,
+                        toPath,
+                        "moveResource"
+                );
+            }
+
+            ResourceType fromType = pathValidator.validateAndGetType(fromPath);
+            ResourceType toType = pathValidator.validateAndGetType(toPath);
+            if (fromType != toType) {
+                throw new StorageException.InvalidPathException(
+                        "Тип ресурса не совпадает при перемещении: " + fromType + " -> " + toType,
+                        userId,
+                        toPath,
+                        "moveResource"
+                );
+            }
+
+            return true;
+        } catch (StorageException e) {
+            // Пробрасываем наши кастомные исключения дальше
+            throw e;
+        } catch (Exception e) {
+            // Неожиданные ошибки
             throw new StorageException.InvalidPathException(
-                    "Нельзя переместить папку внутрь самой себя или её подпапки",
-                    null,
-                    toPath,
-                    "moveResource"
-            );
-        }
-
-        // Проверяем существование исходного ресурса
-        if (!minioServiceAdapter.isObjectExists(userId, fromPath)) {
-            throw new StorageException.ResourceNotFoundException(
-                    "Исходный ресурс не существует: " + fromPath,
+                    "Ошибка при проверке возможности перемещения: " + e.getMessage(),
                     userId,
-                    fromPath,
+                    fromPath + " -> " + toPath,
                     "moveResource"
             );
         }
-
-        // Проверяем отсутствие целевого ресурса
-        if (minioServiceAdapter.isObjectExists(userId, toPath)) {
-            throw new StorageException.ResourceAlreadyExistsException(
-                    "Ресурс уже существует: " + toPath,
-                    userId,
-                    toPath,
-                    "moveResource"
-            );
-
-        }
-
-        ResourceType fromType = pathValidator.validateAndGetType(fromPath);
-        ResourceType toType = pathValidator.validateAndGetType(toPath);
-        if (fromType != toType) {
-            throw new StorageException.InvalidPathException(
-                    "Тип ресурса не совпадает при перемещении: " + fromType + " -> " + toType,
-                    userId,
-                    toPath,
-                    "moveResource"
-            );
-        }
-
-        return true;
     }
 }

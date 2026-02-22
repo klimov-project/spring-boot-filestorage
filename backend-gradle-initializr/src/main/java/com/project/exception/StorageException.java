@@ -3,7 +3,7 @@ package com.project.exception;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
-public class StorageException {
+public class StorageException extends RuntimeException {
 
     // Базовое исключение для всех ошибок хранилища
     public abstract static class StorageBaseException extends RuntimeException {

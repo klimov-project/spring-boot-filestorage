@@ -20,7 +20,7 @@ public interface MinioService {
 
     String getDownloadUrl(String fullPath);
 
-    boolean isObjectExists(String fullPath);
+    boolean isObjectExists(String fullPath) throws Exception;
 
     MinioObject getObjectInfo(String fullPath);
 
