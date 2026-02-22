@@ -89,7 +89,7 @@ public class ResourceIntegrationTests {
         mockMvc.perform(post("/api/directory")
                 .param("path", dirPath))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value(basePath + "simple-dir/"))
+                .andExpect(jsonPath("$.name").value(dirPath))
                 .andExpect(jsonPath("$.path").value("/"))
                 .andExpect(jsonPath("$.type").value("DIRECTORY"));
 
@@ -97,7 +97,7 @@ public class ResourceIntegrationTests {
         mockMvc.perform(get("/api/resource")
                 .param("path", dirPath))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value(basePath + "simple-dir"))
+                .andExpect(jsonPath("$.name").value(dirPath))
                 .andExpect(jsonPath("$.path").value("/"))
                 .andExpect(jsonPath("$.type").value("DIRECTORY"));
     }
