@@ -1,47 +1,46 @@
-import React, {createContext, useContext, useState} from "react";
-
+import React, { createContext, useContext, useState } from 'react';
 
 const CloudStorageContext = createContext();
 
 export const useStorageSelection = () => useContext(CloudStorageContext);
 
+export const StorageSelectionProvider = ({ children }) => {
+  const [isSelectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
 
-export const StorageSelectionProvider = ({children}) => {
-    const [isSelectionMode, setSelectionMode] = useState(false);
-    const [selectedIds, setSelectedIds] = useState([]);
+  const [isCutMode, setCutMode] = useState(false);
 
-    const [isCutMode, setCutMode] = useState(false);
+  const [bufferIds, setBufferIds] = useState([]);
 
-    const [bufferIds, setBufferIds] = useState([]);
+  const startCutting = () => {
+    setBufferIds(selectedIds);
+    setCutMode(true);
 
+    setSelectedIds([]);
+    setSelectionMode(false);
+  };
 
+  const endCutting = () => {
+    setBufferIds([]);
+    setCutMode(false);
+  };
 
-    const startCutting = () => {
-        setBufferIds(selectedIds);
-        setCutMode(true);
+  return (
+    <CloudStorageContext.Provider
+      value={{
+        isSelectionMode,
+        setSelectionMode,
+        selectedIds,
+        setSelectedIds,
 
-        setSelectedIds([]);
-        setSelectionMode(false);
-    }
+        bufferIds,
 
-    const endCutting = () => {
-        setBufferIds([]);
-        setCutMode(false);
-    }
-
-    return (<CloudStorageContext.Provider
-        value={{
-            isSelectionMode,
-            setSelectionMode,
-            selectedIds,
-            setSelectedIds,
-
-            bufferIds,
-
-            isCutMode,
-            startCutting,
-            endCutting
-        }}>
-        {children}
-    </CloudStorageContext.Provider>);
-}
+        isCutMode,
+        startCutting,
+        endCutting,
+      }}
+    >
+      {children}
+    </CloudStorageContext.Provider>
+  );
+};
