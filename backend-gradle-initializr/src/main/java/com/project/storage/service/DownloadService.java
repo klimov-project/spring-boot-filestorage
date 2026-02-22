@@ -8,7 +8,7 @@ public interface DownloadService {
     /**
      * Получение ресурса для скачивания
      */
-    DownloadResult getDownloadResource(Long userId, String path) throws IOException;
+    DownloadResult getDownloadResource(Long userId, String path);
 
     /**
      * Получение прямой ссылки для скачивания (опционально)

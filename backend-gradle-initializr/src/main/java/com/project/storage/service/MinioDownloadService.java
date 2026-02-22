@@ -15,7 +15,6 @@ import org.springframework.beans.factory.annotation.Value;
 import com.project.storage.model.ResourceType;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -49,7 +48,7 @@ public class MinioDownloadService implements DownloadService {
     }
 
     @Override
-    public DownloadResult getDownloadResource(Long userId, String path) throws IOException {
+    public DownloadResult getDownloadResource(Long userId, String path) {
         logger.info("User {}: Preparing download for path: {}", userId, path);
 
         try {
@@ -110,8 +109,7 @@ public class MinioDownloadService implements DownloadService {
     /**
      * Скачивание файла из MinIO
      */
-    private DownloadResult downloadFileFromMinio(Long userId, String relativePath, String originalName)
-            throws IOException {
+    private DownloadResult downloadFileFromMinio(Long userId, String relativePath, String originalName) {
 
         String fullPath = getFullPathForMinio(userId, relativePath);
 
@@ -151,8 +149,7 @@ public class MinioDownloadService implements DownloadService {
     /**
      * Скачивание папки как ZIP архива из MinIO
      */
-    private DownloadResult downloadDirectoryAsZip(Long userId, String relativePath, String folderName)
-            throws IOException {
+    private DownloadResult downloadDirectoryAsZip(Long userId, String relativePath, String folderName) {
 
         Path tempZip = null;
         try {
@@ -190,8 +187,8 @@ public class MinioDownloadService implements DownloadService {
             if (tempZip != null) {
                 try {
                     Files.deleteIfExists(tempZip);
-                } catch (IOException ex) {
-                    logger.warn("Failed to delete temp file: {}", tempZip, ex);
+                } catch (Exception ex) {
+                    throw new RuntimeException("Failed to delete temp zip file: " + tempZip, ex);
                 }
             }
 
@@ -208,7 +205,7 @@ public class MinioDownloadService implements DownloadService {
     /**
      * Чтение всех байт из InputStream
      */
-    private byte[] readAllBytes(InputStream inputStream) throws IOException {
+    private byte[] readAllBytes(InputStream inputStream) {
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         byte[] data = new byte[8192];
         int nRead;
@@ -259,7 +256,7 @@ public class MinioDownloadService implements DownloadService {
     /**
      * Добавление файла из MinIO в ZIP архив
      */
-    private void addFileToZip(ZipOutputStream zos, MinioFileInfo fileInfo) throws IOException {
+    private void addFileToZip(ZipOutputStream zos, MinioFileInfo fileInfo) {
         String fullPath = getFullPathForMinio(fileInfo.getUserId(), fileInfo.getRelativePath());
 
         try (InputStream fileStream = minioClient.getObject(
@@ -281,7 +278,7 @@ public class MinioDownloadService implements DownloadService {
             zos.closeEntry();
         } catch (Exception e) {
             logger.error("Error adding file to zip: {}", fileInfo.getRelativePath(), e);
-            throw new IOException("Failed to add file to zip: " + fileInfo.getRelativePath(), e);
+            throw new RuntimeException("Failed to add file to zip: " + fileInfo.getRelativePath(), e);
         }
     }
 

@@ -11,7 +11,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-
 @RestController
 @RequestMapping("/api")
 @PreAuthorize("isAuthenticated()")
@@ -26,7 +25,7 @@ public class DownloadController {
     }
 
     /**
-     * GET /api/download - Скачивание файла/папки      
+     * GET /api/download - Скачивание файла/папки
      */
     @GetMapping("/resource/download")
     public ResponseEntity<?> downloadResource(
@@ -34,27 +33,18 @@ public class DownloadController {
             @RequestParam(required = true) String path) {
 
         logger.info("User {} requesting download for: {}", user.getId(), path);
+        DownloadService.DownloadResult result
+                = downloadService.getDownloadResource(user.getId(), path);
 
-        try {
-            DownloadService.DownloadResult result =
-                    downloadService.getDownloadResource(user.getId(), path);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"" + result.getFilename() + "\"");
+        headers.setContentType(result.isZip()
+                ? MediaType.valueOf("application/zip")
+                : MediaType.APPLICATION_OCTET_STREAM);
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.add(HttpHeaders.CONTENT_DISPOSITION,
-                    "attachment; filename=\"" + result.getFilename() + "\"");
-            headers.setContentType(result.isZip() 
-                    ? MediaType.valueOf("application/zip") 
-                    : MediaType.APPLICATION_OCTET_STREAM);
-
-            return ResponseEntity.ok()
-                    .headers(headers)
-                    .body(result.getResource());
-
-        } catch (Exception e) {
-            logger.error("Unexpected error downloading resource for user {}: {}",
-                    user.getId(), e.getMessage(), e);
-            return ResponseEntity.internalServerError()
-                    .body("Error downloading resource: " + e.getMessage());
-        }
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(result.getResource());
     }
 }

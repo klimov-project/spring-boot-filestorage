@@ -409,7 +409,7 @@ public class MinioServiceImpl implements MinioService {
                     .isDirectory(fullPath.endsWith("/"))
                     .build();
         } catch (Exception e) {
-            throw new RuntimeException("getObjectInfo " + e.getMessage(), e);
+            throw new RuntimeException("getObjectInfo Not Found: " + e.getMessage(), e);
         }
     }
 
