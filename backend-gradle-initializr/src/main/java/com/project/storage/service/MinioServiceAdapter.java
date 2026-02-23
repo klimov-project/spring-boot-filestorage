@@ -3,7 +3,8 @@ package com.project.storage.service;
 import java.util.List;
 import com.project.entity.MinioObject;
 import com.project.exception.StorageException;
-import io.minio.*;
+import com.project.storage.model.ResourceType;
+import com.project.storage.util.PathValidator;
 import io.minio.errors.*;
 import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
@@ -16,9 +17,11 @@ public class MinioServiceAdapter {
     private static final Logger logger = LoggerFactory.getLogger(MinioServiceAdapter.class);
 
     private final MinioService minioService;
+    private final PathValidator pathValidator;
 
-    public MinioServiceAdapter(MinioService minioService) {
+    public MinioServiceAdapter(MinioService minioService, PathValidator pathValidator) {
         this.minioService = minioService;
+        this.pathValidator = pathValidator;
     }
 
     // ============= АДАПТЕРЫ ДЛЯ МЕТОДОВ MINIOSERVICE =============
@@ -88,14 +91,21 @@ public class MinioServiceAdapter {
      * Переименование объекта с преобразованием исключений
      */
     public void renameObject(Long userId, String fromRelativePath, String toRelativePath) {
-        String fromFullPath = toFullPath(userId, fromRelativePath);
-        String toFullPath = toFullPath(userId, toRelativePath);
 
         try {
+            isRenameAllowed(userId, fromRelativePath, toRelativePath);
+
+            String fromFullPath = toFullPath(userId, fromRelativePath);
+            String toFullPath = toFullPath(userId, toRelativePath);
+
             minioService.renameObject(fromFullPath, toFullPath);
         } catch (Exception e) {
             throw transformRenameObjectException(e, userId, fromRelativePath, toRelativePath);
         }
+    }
+
+    public void moveResource(Long userId, String fromRelativePath, String toRelativePath) {
+        renameObject(userId, fromRelativePath, toRelativePath);
     }
 
     /**
@@ -148,8 +158,68 @@ public class MinioServiceAdapter {
             // NoSuchKey обрабатывается в isObjectExists и возвращает false
             throw e;
         } catch (Exception e) {
-            throw transformObjectExistsException(e, userId, relativePath);
+            throw e;
         }
+    }
+
+    /**
+     * Проверка возможности переименования (перемещения) ресурса с валидацией
+     * путей и типов ресурсов
+     */
+    private boolean isRenameAllowed(Long userId, String fromPath, String toPath) throws Exception {
+        // Валидация пути (тип не известен заранее, поэтому expectedType = null)
+        pathValidator.assertValidPathOrThrow(fromPath, null, userId, "moveResource");
+        pathValidator.assertValidPathOrThrow(toPath, null, userId, "moveResource");
+
+        // Проверяем, что не пытаются переместить папку внутрь самой себя или её подпапки
+        if (toPath.startsWith(fromPath)) {
+            throw new StorageException.InvalidPathException(
+                    "Нельзя переместить папку внутрь самой себя или её подпапки",
+                    userId,
+                    toPath,
+                    "moveResource"
+            );
+        }
+
+        // Проверяем соответствие типов ресурсов (файл -> файл, папка -> папка)
+        ResourceType fromType = pathValidator.validateAndGetType(fromPath);
+        ResourceType toType = pathValidator.validateAndGetType(toPath);
+        if (fromType != toType) {
+            throw new StorageException.InvalidPathException(
+                    "Тип ресурса не совпадает при перемещении: " + fromType + " -> " + toType,
+                    userId,
+                    toPath,
+                    "moveResource"
+            );
+        }
+
+        try {
+            // Проверяем существование исходного ресурса 
+            if (!isObjectExists(userId, fromPath)) {
+                throw new StorageException.ResourceNotFoundException(
+                        "Исходный ресурс не найден: " + fromPath,
+                        userId,
+                        fromPath,
+                        "moveResource"
+                );
+            }
+
+            // Проверяем отсутствие целевого ресурса 
+            if (isObjectExists(userId, toPath)) {
+                throw new StorageException.ResourceAlreadyExistsException(
+                        "Целевой ресурс уже существует: " + toPath,
+                        userId,
+                        toPath,
+                        "moveResource"
+                );
+            }
+
+        } catch (Exception e) {
+            //  Кастомные ошибки пробрасываем дальше
+            throw e;
+        }
+
+        return true;
     }
 
     /**
@@ -388,7 +458,7 @@ public class MinioServiceAdapter {
         logger.debug("Transform renameObject exception: {}", errorMessage);
 
         if (errorMessage != null && (errorMessage.contains("Ресурс не найден")
-                || errorMessage.contains("NoSuchKey"))) {
+                || errorMessage.contains("Исходный ресурс не найден") || errorMessage.contains("NoSuchKey"))) {
 
             return new StorageException.ResourceNotFoundException(
                     "Ресурс не найден: " + fromRelativePath,
@@ -398,7 +468,7 @@ public class MinioServiceAdapter {
             );
         } else if (errorMessage != null && errorMessage.contains("уже существует")) {
             return new StorageException.ResourceAlreadyExistsException(
-                    "Ресурс уже существует: " + toRelativePath,
+                    "Ресурс, лежащий по пути " + toRelativePath + " уже существует",
                     userId,
                     toRelativePath,
                     "renameObject"

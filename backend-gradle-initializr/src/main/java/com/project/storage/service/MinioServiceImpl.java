@@ -393,11 +393,8 @@ public class MinioServiceImpl implements MinioService {
             }
             // Любая другая ошибка MinIO - пробрасываем дальше
             logger.error("Ошибка MinIO при проверке объекта {}: {}", fullPath, e.getMessage());
-            throw e;
-        } catch (Exception e) {
-            // Другие ошибки (сеть, таймаут и т.д.) - пробрасываем
-            logger.error("Ошибка при проверке объекта {}: {}", fullPath, e.getMessage());
-            throw e;
+            
+            throw new RuntimeException(e.getMessage(), e);
         }
     }
 

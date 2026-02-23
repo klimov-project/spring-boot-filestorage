@@ -2,8 +2,6 @@ package com.project.storage.service;
 
 import com.project.entity.MinioObject;
 import com.project.exception.StorageException;
-import io.minio.*;
-import io.minio.errors.*;
 import com.project.storage.dto.ResourceInfo;
 import com.project.storage.model.ResourceType;
 import com.project.storage.util.PathValidator;
@@ -139,8 +137,7 @@ public class MinioStorageService implements StorageService {
     public ResourceInfo moveResource(Long userId, String fromRelativePath, String toRelativePath) {
 
         try {
-            isMoveAllowed(userId, fromRelativePath, toRelativePath);
-            minioServiceAdapter.renameObject(userId, fromRelativePath, toRelativePath);
+            minioServiceAdapter.moveResource(userId, fromRelativePath, toRelativePath);
             return getResourceInfo(userId, toRelativePath);
         } catch (Exception e) {
             throw e;
@@ -148,7 +145,8 @@ public class MinioStorageService implements StorageService {
     }
 
     @Override
-    public List<ResourceInfo> searchResources(Long userId, String query) {
+    public List<ResourceInfo> searchResources(Long userId, String query
+    ) {
         if (query == null || query.trim().isEmpty()) {
             throw new StorageException.InvalidPathException(
                     "Поисковый запрос не может быть пустым",
@@ -169,7 +167,8 @@ public class MinioStorageService implements StorageService {
     }
 
     @Override
-    public List<ResourceInfo> getDirectoryContents(Long userId, String relativePath) {
+    public List<ResourceInfo> getDirectoryContents(Long userId, String relativePath
+    ) {
         logger.info("User {} is requesting contents of directory: '{}'", userId, relativePath);
 
         try {
@@ -180,12 +179,13 @@ public class MinioStorageService implements StorageService {
             return objects.stream()
                     .map(obj -> convertToResourceInfo(userId, obj))
                     .collect(Collectors.toList());
-        } catch (Exception e) {
+        } catch (StorageException e) {
+            //  Кастомные ошибки пробрасываем дальше
             throw e;
         }
     }
-
     // ============= ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ============= 
+
     private String getRelativePath(Long userId, String fullPath) {
         String userPrefix = getUserFolderPath(userId) + "/";
 
@@ -282,83 +282,6 @@ public class MinioStorageService implements StorageService {
             currentPath.append(part).append("/");
             String pathToCheck = currentPath.toString();
             minioServiceAdapter.createFolder(userId, pathToCheck, false);
-        }
-    }
-
-    private boolean isMoveAllowed(Long userId, String fromPath, String toPath) {
-        try {
-            // Валидация пути (тип не известен заранее, поэтому expectedType = null)
-            pathValidator.assertValidPathOrThrow(fromPath, null, userId, "moveResource");
-            pathValidator.assertValidPathOrThrow(toPath, null, userId, "moveResource");
-
-            // Проверяем, что не пытаются переместить папку внутрь самой себя или её подпапки
-            if (toPath.startsWith(fromPath)) {
-                throw new StorageException.InvalidPathException(
-                        "Нельзя переместить папку внутрь самой себя или её подпапки",
-                        userId,
-                        toPath,
-                        "moveResource"
-                );
-            }
-
-            // Проверяем существование исходного ресурса
-            try {
-                if (!minioServiceAdapter.isObjectExists(userId, fromPath)) {
-                    throw new StorageException.ResourceNotFoundException(
-                            "Исходный ресурс не существует: " + fromPath,
-                            userId,
-                            fromPath,
-                            "moveResource"
-                    );
-                }
-            } catch (Exception e) {
-                // Любая ошибка при проверке существования (кроме NoSuchKey) пробрасывается как есть
-                throw e;
-            }
-
-            // Проверяем отсутствие целевого ресурса
-            try {
-                if (minioServiceAdapter.isObjectExists(userId, toPath)) {
-                    throw new StorageException.ResourceAlreadyExistsException(
-                            "Ресурс уже существует: " + toPath,
-                            userId,
-                            toPath,
-                            "moveResource"
-                    );
-                }
-            } catch (Exception e) {
-                // Любая ошибка при проверке существования целевого ресурса
-                throw new StorageException.InvalidPathException(
-                        "Ошибка при проверке целевого ресурса: " + e.getMessage(),
-                        userId,
-                        toPath,
-                        "moveResource"
-                );
-            }
-
-            ResourceType fromType = pathValidator.validateAndGetType(fromPath);
-            ResourceType toType = pathValidator.validateAndGetType(toPath);
-            if (fromType != toType) {
-                throw new StorageException.InvalidPathException(
-                        "Тип ресурса не совпадает при перемещении: " + fromType + " -> " + toType,
-                        userId,
-                        toPath,
-                        "moveResource"
-                );
-            }
-
-            return true;
-        } catch (StorageException e) {
-            // Пробрасываем наши кастомные исключения дальше
-            throw e;
-        } catch (Exception e) {
-            // Неожиданные ошибки
-            throw new StorageException.InvalidPathException(
-                    "Ошибка при проверке возможности перемещения: " + e.getMessage(),
-                    userId,
-                    fromPath + " -> " + toPath,
-                    "moveResource"
-            );
         }
     }
 }
