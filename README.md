@@ -4,12 +4,12 @@
 
 **Технологический стек**
 
-- Java, Gradle
-- Spring Boot, Spring Security
-- Spring Session (Redis)
+- Java ![Java](https://img.shields.io/badge/java-black?style=for-the-badge&logo=java&link=https%3A%2F%2Fwww.java.com%2Fen%2F), Gradle ![Gradle](https://img.shields.io/badge/gradle-black?style=for-the-badge&logo=gradle&link=https%3A%2F%2Fgradle.org)
+- Spring Boot ![Spring Boot](https://img.shields.io/badge/Spring%20boot-black?style=for-the-badge&logo=spring%20boot&link=https%3A%2F%2Fspring.io), Spring Security
+- Spring Session (Redis) ![Redis](https://img.shields.io/badge/redis-black?style=for-the-badge&logo=redis&link=https%3A%2F%2Fredis.io)
 - JPA (Postgres/MySQL)
-- MinIO (S3-совместимое хранилище)
-- Docker для Postgres/Redis/MinIO
+- MinIO (S3-совместимое хранилище) ![Minio](https://img.shields.io/badge/minio-black?style=for-the-badge&logo=minio&link=https%3A%2F%2Fmin.io)
+- Docker для Postgres/Redis/MinIO ![Docker](https://img.shields.io/badge/docker-black?style=for-the-badge&logo=docker&link=https%3A%2F%2Fwww.docker.com)
 
 ## Запуск
 
