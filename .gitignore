@@ -13,8 +13,7 @@ node_modules
 LICENSE
 
 docker-compose.override.yml
-docker-compose-var2.override.yml
-docker-compose-var3.override.yml
+docker-compose.yml
 
 # Build artifacts
 build/

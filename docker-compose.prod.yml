@@ -6,8 +6,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports:
-      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -19,8 +17,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: my_redis
-    ports:
-      - "${REDIS_PORT}:${REDIS_PORT}"
     volumes:
       - redis_data:/data
     command: redis-server --save 60 1 --loglevel warning
@@ -39,9 +35,6 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
       MINIO_DEFAULT_BUCKETS: ${MINIO_DEFAULT_BUCKETS}
       MINIO_PORT: ${MINIO_PORT}
-    ports:
-      - "${MINIO_PORT}:${MINIO_PORT}"
-      - "9001:9001"
     volumes:
       - minio_data:/data
     healthcheck:
@@ -88,6 +81,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "80:80"
+      # - "443:443"
     depends_on:
       - backend
     restart: always
