@@ -2,7 +2,6 @@
 @username = user_1
 @password = password
 @contentType = application/json
-@temporaryJWT = Bearer <ваш_токен_здесь>
 
 ### Проверка работы сервера
 GET {{host_api}}/health
@@ -34,7 +33,7 @@ Content-Type: {{contentType}}
 
 
 ### Выход пользователя (Logout)
-POST {{host_api}}/auth/sign-out 
+POST {{host_api}}/auth/sign-out
 Content-Type: {{contentType}}
 
 
@@ -47,7 +46,7 @@ POST {{host_api}}/directory?path=test-folder/
 POST {{host_api}}/directory?path=test-folder/subfolder/
 
 ### Получение содержимого папки1
-GET {{host_api}}/directory?path=test-download/
+GET {{host_api}}/directory?path=test-folder/
 Content-Type: {{contentType}}
 
 ### Создание тестовой папки2 "test-download"
@@ -73,7 +72,7 @@ GET {{host_api}}/resource/search?query=test
 
 
 ### Получение информации о папке (path=/ если корневая)
-GET {{host_api}}/resource?path=/
+GET {{host_api}}/resource?path=test-download/
 
 ### Создадим файл в существующей папке "test-download"
 POST {{host_api}}/resource?path=test-download/
@@ -114,7 +113,7 @@ POST {{host_api}}/directory?path=test-move-files/
 POST {{host_api}}/directory?path=test-move-files/source/
 
 ### 3. Загружаем тестовый файл
-POST {{host_api}}/resource?path=test-move-files/source/
+POST {{host_api}}/resource?path=test-move-files/source/source2/
 Content-Type: multipart/form-data; boundary=boundary
 
 --boundary
@@ -133,8 +132,8 @@ PATCH {{host_api}}/resource/move
 Content-Type: application/json
 
 {
-  "from": "test-move-files/source/test-file.txt",
-  "to": "test-move-files/source/renamed-file.txt"
+  "from": "test-file.txt",
+  "to": "renamed-file.txt"
 }
 
 ### 6. Проверяем переименование
@@ -172,7 +171,7 @@ Content-Type: text/plain
 This file already exists.
 --boundary--
 
-### 11. ТЕСТ 4: Ошибка 409 при перемещении несуществующего файла в уже существующий
+### 11. ТЕСТ 4: Перемещение несуществующего файла (Ошибка 404) в уже существующий (Ошибка 409)
 PATCH {{host_api}}/resource/move
 Content-Type: application/json
 
@@ -196,9 +195,33 @@ Content-Type: application/json
   "to": "test-move-folders/moved/"
 }
 
-### 13. Очистка
+### Удаление после тестов
 DELETE {{host_api}}/resource?path=test-move-files/
 Accept: application/json
 
 DELETE {{host_api}}/resource?path=test-move-folders/
+Accept: application/json
+
+
+### 13. ТЕСТ 6: удаление папок и файлов
+
+### Создание тестовой папки "test-delete"
+POST {{host_api}}/directory?path=test-delete/ 
+
+### Создадим файл в существующей папке "test-delete"
+POST {{host_api}}/resource?path=test-delete/
+Content-Type: multipart/form-data; boundary=boundarys
+
+--boundarys
+Content-Disposition: form-data; name="files"; filename="delete-file-test.txt"
+Content-Type: text/plain
+
+This is test file content for delete-file-test.
+--boundarys--
+
+
+DELETE {{host_api}}/resource?path=test-delete/delete-file-test.txt
+Accept: application/json
+
+DELETE {{host_api}}/resource?path=test-delete/
 Accept: application/json
