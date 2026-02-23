@@ -72,7 +72,7 @@ GET {{host_api}}/resource/search?query=test
 
 
 ### Получение информации о папке (path=/ если корневая)
-GET {{host_api}}/resource?path=test-download/
+GET {{host_api}}/resource?path=/
 
 ### Создадим файл в существующей папке "test-download"
 POST {{host_api}}/resource?path=test-download/
@@ -113,7 +113,7 @@ POST {{host_api}}/directory?path=test-move-files/
 POST {{host_api}}/directory?path=test-move-files/source/
 
 ### 3. Загружаем тестовый файл
-POST {{host_api}}/resource?path=test-move-files/source/source2/
+POST {{host_api}}/resource?path=test-move-files/source/
 Content-Type: multipart/form-data; boundary=boundary
 
 --boundary
@@ -132,8 +132,8 @@ PATCH {{host_api}}/resource/move
 Content-Type: application/json
 
 {
-  "from": "test-file.txt",
-  "to": "renamed-file.txt"
+  "from": "test-move-files/source/test-file.txt",
+  "to": "test-move-files/source/renamed-file.txt"
 }
 
 ### 6. Проверяем переименование
@@ -144,12 +144,12 @@ Accept: application/json
 POST {{host_api}}/directory?path=test-move-files/destination/
 Accept: application/json
 
-### 8. ТЕСТ 2: Перемещение файла (move + rename)
+### 8. ТЕСТ 2: Перемещение файла
 PATCH {{host_api}}/resource/move
 Content-Type: application/json
 
 {
-  "from": "test-move-files/source/renamed-file.txt",
+  "from": "test-move-files/source/moved-file.txt",
   "to": "test-move-files/destination/moved-file.txt"
 }
 
