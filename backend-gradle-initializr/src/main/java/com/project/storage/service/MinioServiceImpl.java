@@ -67,7 +67,7 @@ public class MinioServiceImpl implements MinioService {
      * @param strict true — строгий режим (ошибка, если уже есть файл/папка с
      * таким именем), false — нестрогий (ошибки игнорируются)
      */
-    // По умолчанию — строгий режим
+    // По умолчанию — строгий режим 
     @Override
     public void createFolder(String fullPath) {
         createFolder(fullPath, true);
@@ -76,46 +76,37 @@ public class MinioServiceImpl implements MinioService {
     @Override
     public void createFolder(String fullPath, boolean strict) {
         try {
-            // Проверяем, существует ли уже объект с таким именем 
             boolean exists = isObjectExists(fullPath);
 
             if (exists) {
                 if (strict) {
-                    throw new RuntimeException("Folder already exists error on 'createFolder' method. ");
+                    throw new RuntimeException("Folder already exists: " + fullPath);
                 } else {
-                    // В нестрогом режиме просто выходим, не создаём и не кидаем ошибку
-                    logger.debug("Папка уже существует (нестрогий режим): {}", fullPath);
+                    logger.debug("Folder already exists (non-strict mode): {}", fullPath);
                     return;
                 }
             }
             createFolderInMinio(fullPath);
-            logger.debug("Папка создана: {}", fullPath);
+            logger.debug("Folder created: {}", fullPath);
 
         } catch (Exception e) {
             if (strict) {
                 throw new RuntimeException("createFolder: " + e.getMessage(), e);
             } else {
-                // В нестрогом режиме просто логируем и продолжаем
-                logger.warn("Ошибка при создании папки (нестрогий режим): {} — {}", fullPath, e.getMessage());
+                logger.warn("Error creating folder (non-strict mode): {} — {}", fullPath, e.getMessage());
             }
         }
     }
 
     @Override
     public List<MinioObject> uploadFiles(String destinationFullPath, MultipartFile[] files) {
-        logger.info("=== Initializing uploadFiles IMLEMENT   ===");
         List<MinioObject> uploadedObjects = new ArrayList<>();
-
         try {
-            logger.info("=== Initializing uploadFiles IMLEMENT 222  ===");
             String destination = ensureTrailingSlash(destinationFullPath);
-            logger.info("=== destination: {}   ===", destination);
 
             for (MultipartFile file : files) {
-                logger.info("=== Initializing uploadFiles IMLEMENT 333  ===");
                 String objectName = destination + file.getOriginalFilename();
                 validateFileCreation(objectName);
-                logger.info("=== objectName: {}   ===", objectName);
 
                 createFileInMinio(objectName, file);
 
@@ -125,7 +116,7 @@ public class MinioServiceImpl implements MinioService {
                         .size(file.getSize())
                         .isDirectory(false)
                         .build());
-                logger.debug("Файл загружен: {}", objectName);
+                logger.debug("File uploaded: {}", objectName);
             }
 
             return uploadedObjects;
@@ -137,30 +128,24 @@ public class MinioServiceImpl implements MinioService {
     @Override
     public void deleteObject(String fullPath) {
         try {
-            // Проверяем, является ли объект папкой
             if (fullPath.endsWith("/") || isDirectory(fullPath)) {
-                logger.debug("Удаление папки (рекурсивно): {}", fullPath);
+                logger.debug("Deleting folder recursively: {}", fullPath);
 
-                // Получаем все объекты в папке рекурсивно (одним запросом)
                 List<String> objectsToDelete = collectAllObjectsRecursive(fullPath);
-
-                // Добавляем саму папку
                 objectsToDelete.add(fullPath);
 
-                // Удаляем все объекты
                 deleteObjects(objectsToDelete);
 
-                logger.debug("Папка и содержимое удалены: {}. Объектов: {}",
+                logger.debug("Folder and contents deleted: {}. Objects deleted: {}",
                         fullPath, objectsToDelete.size());
             } else {
-                // Просто удаляем файл
                 minioClient.removeObject(
                         RemoveObjectArgs.builder()
                                 .bucket(bucket)
                                 .object(fullPath)
                                 .build()
                 );
-                logger.debug("Файл удалён: {}", fullPath);
+                logger.debug("File deleted: {}", fullPath);
             }
         } catch (Exception e) {
             throw new RuntimeException("deleteObject: " + e.getMessage(), e);
@@ -172,7 +157,6 @@ public class MinioServiceImpl implements MinioService {
      */
     private List<String> collectAllObjectsRecursive(String folderPath) {
         List<String> objects = new ArrayList<>();
-
         try {
             String prefix = ensureTrailingSlash(folderPath);
 
@@ -188,16 +172,15 @@ public class MinioServiceImpl implements MinioService {
                 Item item = result.get();
                 String objectName = item.objectName();
 
-                // Пропускаем саму папку
+                // Skip the folder itself
                 if (!objectName.equals(prefix)) {
                     objects.add(objectName);
                 }
             }
         } catch (Exception e) {
-            logger.error("Ошибка при сборе объектов в папке: {}", folderPath, e);
-            throw new RuntimeException("Ошибка при сборе объектов в папке: " + folderPath, e);
+            logger.error("Error collecting objects in folder: {}", folderPath, e);
+            throw new RuntimeException("Error collecting objects in folder: " + folderPath, e);
         }
-
         return objects;
     }
 
@@ -207,17 +190,14 @@ public class MinioServiceImpl implements MinioService {
             boolean isDirectory = oldFullPath.endsWith("/") || isDirectory(oldFullPath);
 
             if (isDirectory) {
-                // Для папок: переименовываем все вложенные объекты
                 renameDirectory(oldFullPath, newFullPath);
             } else {
-                // Для файлов: просто переименовываем
                 renameFile(oldFullPath, newFullPath);
             }
 
-            logger.debug("Объект переименован: {} -> {}", oldFullPath, newFullPath);
+            logger.debug("Object renamed: {} -> {}", oldFullPath, newFullPath);
         } catch (Exception e) {
-            logger.error("Ошибка при переименовании {} -> {}: {}",
-                    oldFullPath, newFullPath, e.getMessage(), e);
+            logger.error("Error renaming {} -> {}: {}", oldFullPath, newFullPath, e.getMessage(), e);
             throw new RuntimeException("renameObject: " + e.getMessage(), e);
         }
     }
@@ -226,23 +206,16 @@ public class MinioServiceImpl implements MinioService {
      * Переименование папки и всего её содержимого
      */
     private void renameDirectory(String oldFolderPath, String newFolderPath) throws Exception {
-        // Нормализуем пути
         String oldPrefix = ensureTrailingSlash(oldFolderPath);
         String newPrefix = ensureTrailingSlash(newFolderPath);
 
-        // Создаём новую папку
         createFolderInMinio(newPrefix);
 
-        // Получаем все объекты внутри папки (рекурсивно)
         List<String> objectsToRename = collectAllObjectsRecursive(oldPrefix);
-
-        // Список для хранения скопированных объектов
         List<String> copiedObjects = new ArrayList<>();
 
         try {
-            // Копируем каждый объект в новое место
             for (String oldObjectPath : objectsToRename) {
-                // Заменяем старый префикс на новый
                 String newObjectPath = oldObjectPath.replaceFirst(
                         Pattern.quote(oldPrefix),
                         newPrefix
@@ -259,17 +232,14 @@ public class MinioServiceImpl implements MinioService {
                                         .build())
                                 .build()
                 );
-
                 copiedObjects.add(oldObjectPath);
-                logger.debug("Скопирован: {} -> {}", oldObjectPath, newObjectPath);
+                logger.debug("Copied: {} -> {}", oldObjectPath, newObjectPath);
             }
 
-            // Если всё скопировалось успешно, удаляем старую папку со всем содержимым
             deleteObject(oldPrefix);
 
         } catch (Exception e) {
-            // В случае ошибки пытаемся откатить изменения (удалить скопированное)
-            logger.error("Ошибка при копировании, выполняем откат", e);
+            logger.error("Error during copy, performing rollback", e);
             rollbackRename(newPrefix, copiedObjects);
             throw e;
         }
@@ -281,7 +251,7 @@ public class MinioServiceImpl implements MinioService {
     private void renameFile(String oldFilePath, String newFilePath) throws Exception {
         // Проверяем существование нового пути
         if (isObjectExists(newFilePath)) {
-            throw new RuntimeException("Файл с таким именем уже существует: " + newFilePath);
+            throw new RuntimeException("A file with this name already exists: " + newFilePath);
         }
 
         // Копируем файл
@@ -309,7 +279,7 @@ public class MinioServiceImpl implements MinioService {
      * Откат операции переименования при ошибке
      */
     private void rollbackRename(String newPrefix, List<String> copiedObjects) {
-        logger.warn("Откат операции переименования для папки: {}", newPrefix);
+        logger.warn("Rolling back rename operation for folder: {}", newPrefix);
 
         for (String oldPath : copiedObjects) {
             try {
@@ -324,7 +294,7 @@ public class MinioServiceImpl implements MinioService {
                                 .build()
                 );
             } catch (Exception e) {
-                logger.error("Ошибка при откате для объекта: {}", oldPath, e);
+                logger.error("Error during rollback for object: {}", oldPath, e);
             }
         }
     }
@@ -376,24 +346,22 @@ public class MinioServiceImpl implements MinioService {
     @Override
     public boolean isObjectExists(String fullPath) throws Exception {
         try {
-            logger.debug("Проверка существования объекта в Minio: {}", fullPath);
+            logger.debug("Checking object existence in Minio: {}", fullPath);
             minioClient.statObject(
                     StatObjectArgs.builder()
                             .bucket(bucket)
                             .object(fullPath)
                             .build()
             );
-            logger.debug("Объект найден: {}", fullPath);
+            logger.debug("Object exists: {}", fullPath);
             return true;
         } catch (ErrorResponseException e) {
-            // Только NoSuchKey означает "не существует"
             if (e.errorResponse().code().equals("NoSuchKey")) {
-                logger.debug("Объект не существует: {}", fullPath);
+                logger.debug("Object does not exist: {}", fullPath);
                 return false;
             }
-            // Любая другая ошибка MinIO - пробрасываем дальше
-            logger.error("Ошибка MinIO при проверке объекта {}: {}", fullPath, e.getMessage());
-            
+            logger.error("MinIO error while checking object {}: {}", fullPath, e.getMessage());
+
             throw new RuntimeException(e.getMessage(), e);
         }
     }
@@ -421,34 +389,29 @@ public class MinioServiceImpl implements MinioService {
     }
 
     // ============= ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ =============
-    //  
+    //   
     private void validateFileCreation(String fullPath) throws Exception {
-        logger.info("=== Initializing validateFileCreation ===");
-        logger.info("  fullPath: {}  ", fullPath);
-        // Удаляем завершающий слеш если есть
+        logger.debug("Validating file creation for path: {}", fullPath);
+
         String normalizedPath = fullPath.endsWith("/")
                 ? fullPath.substring(0, fullPath.length() - 1)
                 : fullPath;
 
-        logger.info("  normalizedPath: {}  ", normalizedPath);
-        // Проверка существования файла
+        logger.debug("Normalized path: {}", normalizedPath);
+
         if (isObjectExists(normalizedPath)) {
-            logger.info(" ==  File already exists 77777 {}", normalizedPath);
-            throw new RuntimeException("File already exists 77777 : " + normalizedPath);
+            logger.debug("File already exists: {}", normalizedPath);
+            throw new RuntimeException("File already exists: " + normalizedPath);
         }
 
-        // Проверка родительской папки
         if (fullPath.contains("/")) {
-            // Находим последний слеш
             int lastSlashIndex = normalizedPath.lastIndexOf('/');
             if (lastSlashIndex > 0) {
-                // Берем путь до последнего слеша 
                 String parentPath = normalizedPath.substring(0, lastSlashIndex);
-
                 if (!parentPath.isEmpty()) {
                     String parentObjectName = ensureTrailingSlash(parentPath);
                     if (!isObjectExists(parentObjectName)) {
-                        throw new NoSuchElementException("Родительская папка не существует");
+                        throw new NoSuchElementException("Parent directory does not exist");
                     }
                 }
             }
@@ -516,7 +479,7 @@ public class MinioServiceImpl implements MinioService {
                                 .build()
                 );
             } catch (Exception e) {
-                logger.error("Ошибка при удалении объекта: {}", objectPath, e);
+                logger.error("Error deleting object: {}", objectPath, e);
                 // Продолжаем удаление остальных объектов
             }
         }
@@ -549,10 +512,10 @@ public class MinioServiceImpl implements MinioService {
             return results.iterator().hasNext();
 
         } catch (ErrorResponseException e) {
-            logger.error("Объект не найден при проверке типа: {}", fullPath, e);
+            logger.error("Object not found while checking type: {}", fullPath, e);
             return false;
         } catch (Exception e) {
-            logger.error("Ошибка при проверке типа объекта: {}", fullPath, e);
+            logger.error("Error while checking object type: {}", fullPath, e);
             return false;
         }
     }

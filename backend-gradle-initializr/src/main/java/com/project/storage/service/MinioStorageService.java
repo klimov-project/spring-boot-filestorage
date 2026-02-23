@@ -260,28 +260,25 @@ public class MinioStorageService implements StorageService {
      * Создаёт все промежуточные папки для указанного пути, если их нет.
      */
     private void createParentFoldersIfNeeded(Long userId, String fullFilePath) {
-        // Обрезаем имя файла, оставляем только путь до папки
-        logger.debug("createParentFoldersIfNeeded Обрезаем имя файла, оставляем только путь до папки: {}", fullFilePath);
+        logger.debug("Trimming file name, extracting folder path: {}", fullFilePath);
         int lastSlash = fullFilePath.lastIndexOf('/');
         if (lastSlash == -1) {
             return;
         }
         String foldersPath = fullFilePath.substring(0, lastSlash + 1);
-        logger.debug("foldersPath: {}", foldersPath);
+        logger.debug("Folders path: {}", foldersPath);
 
-        // Разбиваем путь на части и создаём поочерёдно каждую папку
         String[] parts = foldersPath.split("/");
         StringBuilder currentPath = new StringBuilder();
-        // Пропускаем пустые элементы (например, если путь начинается с '/')
-        logger.debug("Пропускаем пустые элементы currentPath: {}", currentPath);
+
         for (String part : parts) {
             if (part.isEmpty()) {
                 continue;
             }
-            logger.debug("minioServiceAdapter 1111: {}", currentPath);
             currentPath.append(part).append("/");
             String pathToCheck = currentPath.toString();
             minioServiceAdapter.createFolder(userId, pathToCheck, false);
         }
     }
+
 }

@@ -73,7 +73,9 @@ public class PathValidator {
      * @return тип ресурса или null если путь невалидный
      */
     public ResourceType validateAndGetType(String rawPath) {
-        logger.info("validateAndGetType rawPath: '{}'", rawPath);
+
+        logger.debug("Validating resource type for path: '{}'", rawPath);
+        
         if (!StringUtils.hasText(rawPath)) {
             return null;
         }
@@ -130,7 +132,6 @@ public class PathValidator {
      * @param userId id пользователя (для логирования/ошибок)
      * @param operationName имя операции (для ошибок)
      */
-
     public void assertValidPathOrThrow(String path, ResourceType expectedType, Long userId, String operationName) {
         ResourceType actualType = validateAndGetType(path);
         if (actualType == null) {
