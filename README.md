@@ -3,13 +3,19 @@
 Бэкенд для облачного файлового хранилища (3 этап — завершена работа с файлами и папками). Фронтенд тестовый.
 
 **Технологический стек**
+![Java](https://img.shields.io/badge/java-black?style=for-the-badge&logo=java&link=https%3A%2F%2Fwww.java.com%2Fen%2F)
+![Gradle](https://img.shields.io/badge/gradle-black?style=for-the-badge&logo=gradle&link=https%3A%2F%2Fgradle.org)
+![Spring Boot](https://img.shields.io/badge/Spring%20boot-black?style=for-the-badge&logo=spring%20boot&link=https%3A%2F%2Fspring.io)
+![Redis](https://img.shields.io/badge/redis-black?style=for-the-badge&logo=redis&link=https%3A%2F%2Fredis.io)
+![Minio](https://img.shields.io/badge/minio-black?style=for-the-badge&logo=minio&link=https%3A%2F%2Fmin.io)
+![Docker](https://img.shields.io/badge/docker-black?style=for-the-badge&logo=docker&link=https%3A%2F%2Fwww.docker.com)
 
-- Java ![Java](https://img.shields.io/badge/java-black?style=for-the-badge&logo=java&link=https%3A%2F%2Fwww.java.com%2Fen%2F), Gradle ![Gradle](https://img.shields.io/badge/gradle-black?style=for-the-badge&logo=gradle&link=https%3A%2F%2Fgradle.org)
-- Spring Boot ![Spring Boot](https://img.shields.io/badge/Spring%20boot-black?style=for-the-badge&logo=spring%20boot&link=https%3A%2F%2Fspring.io), Spring Security
-- Spring Session (Redis) ![Redis](https://img.shields.io/badge/redis-black?style=for-the-badge&logo=redis&link=https%3A%2F%2Fredis.io)
+- Java, Gradle
+- Spring Boot, Spring Security
+- Spring Session (Redis)
 - JPA (Postgres/MySQL)
-- MinIO (S3-совместимое хранилище) ![Minio](https://img.shields.io/badge/minio-black?style=for-the-badge&logo=minio&link=https%3A%2F%2Fmin.io)
-- Docker для Postgres/Redis/MinIO ![Docker](https://img.shields.io/badge/docker-black?style=for-the-badge&logo=docker&link=https%3A%2F%2Fwww.docker.com)
+- MinIO (S3-совместимое хранилище)
+- Docker для Postgres/Redis/MinIO
 
 ## Запуск
 
@@ -26,11 +32,34 @@ cd backend-gradle-initializr && ./gradlew bootRun
 cd frontend-placeholder && npm run dev
 ```
 
-**Вся сборка в Docker:**
+## 🚀 Быстрый старт с Docker
 
-```bash
-docker-compose up -d --build
-```
+1. **Клонировать репозиторий:**
+
+   ```bash
+   git clone https://github.com/klimov-project/spring-boot-filestorage.git
+   cd spring-boot-filestorage
+   ```
+
+2. **Настроить переменные окружения:**
+
+   ```bash
+   cp .env.example .env
+   ```
+
+3. **Запустить сборку и контейнеры:**
+
+   ```bash
+   docker-compose up -d --build
+   ```
+
+4. **Проверить работу:**
+
+   ```bash
+   docker ps
+   ```
+
+   Приложение будет доступно по адресу: `http://ваш-сервер`
 
 ## Ключевые достижения текущего этапа
 
@@ -41,13 +70,15 @@ docker-compose up -d --build
 - **Единый формат ошибок**: `{"message": "текст ошибки"}` с корректными HTTP-статусами
 - **Структура исключений**:
 
-  ```
-  StorageException (базовое)
-  ├── InvalidPathException          # 400
-  ├── ResourceNotFoundException     # 404
-  ├── ResourceAlreadyExistsException # 409
-  └── StorageOperationException     # 500
-  ```
+```
+
+StorageException (базовое)
+├── InvalidPathException # 400
+├── ResourceNotFoundException # 404
+├── ResourceAlreadyExistsException # 409
+└── StorageOperationException # 500
+
+````
 
 ### Что сделано
 
