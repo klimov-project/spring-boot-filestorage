@@ -13,7 +13,19 @@
 - Java, Gradle
 - Spring Boot, Spring Security
 - Spring Session (Redis)
+![Java](https://img.shields.io/badge/java-black?style=for-the-badge&logo=java&link=https%3A%2F%2Fwww.java.com%2Fen%2F)
+![Gradle](https://img.shields.io/badge/gradle-black?style=for-the-badge&logo=gradle&link=https%3A%2F%2Fgradle.org)
+![Spring Boot](https://img.shields.io/badge/Spring%20boot-black?style=for-the-badge&logo=spring%20boot&link=https%3A%2F%2Fspring.io)
+![Redis](https://img.shields.io/badge/redis-black?style=for-the-badge&logo=redis&link=https%3A%2F%2Fredis.io)
+![Minio](https://img.shields.io/badge/minio-black?style=for-the-badge&logo=minio&link=https%3A%2F%2Fmin.io)
+![Docker](https://img.shields.io/badge/docker-black?style=for-the-badge&logo=docker&link=https%3A%2F%2Fwww.docker.com)
+
+- Java, Gradle
+- Spring Boot, Spring Security
+- Spring Session (Redis)
 - JPA (Postgres/MySQL)
+- MinIO (S3-совместимое хранилище)
+- Docker для Postgres/Redis/MinIO
 - MinIO (S3-совместимое хранилище)
 - Docker для Postgres/Redis/MinIO
 
@@ -44,6 +56,22 @@ cd frontend-placeholder && npm run dev
 2. **Настроить переменные окружения:**
 
    ```bash
+   cp .env.example .env && cp .frontend-placeholder/.env.example .frontend-placeholder/.env
+   ```
+
+3. **Запустить сборку и контейнеры:**
+## 🚀 Быстрый старт с Docker
+
+1. **Клонировать репозиторий:**
+
+   ```bash
+   git clone https://github.com/klimov-project/spring-boot-filestorage.git
+   cd spring-boot-filestorage
+   ```
+
+2. **Настроить переменные окружения:**
+
+   ```bash
    cp .env.example .env
    ```
 
@@ -52,6 +80,17 @@ cd frontend-placeholder && npm run dev
    ```bash
    docker-compose up -d --build
    ```
+   ```bash
+   docker-compose up -d --build
+   ```
+
+4. **Проверить работу:**
+
+   ```bash
+   docker ps
+   ```
+
+   Приложение будет доступно по адресу: `http://ваш-сервер`
 
 4. **Проверить работу:**
 
@@ -70,6 +109,15 @@ cd frontend-placeholder && npm run dev
 - **Единый формат ошибок**: `{"message": "текст ошибки"}` с корректными HTTP-статусами
 - **Структура исключений**:
 
+```
+
+StorageException (базовое)
+├── InvalidPathException # 400
+├── ResourceNotFoundException # 404
+├── ResourceAlreadyExistsException # 409
+└── StorageOperationException # 500
+
+````
 ```
 
 StorageException (базовое)
