@@ -13,7 +13,19 @@
 - Java, Gradle
 - Spring Boot, Spring Security
 - Spring Session (Redis)
+![Java](https://img.shields.io/badge/java-black?style=for-the-badge&logo=java&link=https%3A%2F%2Fwww.java.com%2Fen%2F)
+![Gradle](https://img.shields.io/badge/gradle-black?style=for-the-badge&logo=gradle&link=https%3A%2F%2Fgradle.org)
+![Spring Boot](https://img.shields.io/badge/Spring%20boot-black?style=for-the-badge&logo=spring%20boot&link=https%3A%2F%2Fspring.io)
+![Redis](https://img.shields.io/badge/redis-black?style=for-the-badge&logo=redis&link=https%3A%2F%2Fredis.io)
+![Minio](https://img.shields.io/badge/minio-black?style=for-the-badge&logo=minio&link=https%3A%2F%2Fmin.io)
+![Docker](https://img.shields.io/badge/docker-black?style=for-the-badge&logo=docker&link=https%3A%2F%2Fwww.docker.com)
+
+- Java, Gradle
+- Spring Boot, Spring Security
+- Spring Session (Redis)
 - JPA (Postgres/MySQL)
+- MinIO (S3-совместимое хранилище)
+- Docker для Postgres/Redis/MinIO
 - MinIO (S3-совместимое хранилище)
 - Docker для Postgres/Redis/MinIO
 
@@ -48,10 +60,37 @@ cd frontend-placeholder && npm run dev
    ```
 
 3. **Запустить сборку и контейнеры:**
+## 🚀 Быстрый старт с Docker
+
+1. **Клонировать репозиторий:**
+
+   ```bash
+   git clone https://github.com/klimov-project/spring-boot-filestorage.git
+   cd spring-boot-filestorage
+   ```
+
+2. **Настроить переменные окружения:**
+
+   ```bash
+   cp .env.example .env
+   ```
+
+3. **Запустить сборку и контейнеры:**
 
    ```bash
    docker-compose up -d --build
    ```
+   ```bash
+   docker-compose up -d --build
+   ```
+
+4. **Проверить работу:**
+
+   ```bash
+   docker ps
+   ```
+
+   Приложение будет доступно по адресу: `http://ваш-сервер`
 
 4. **Проверить работу:**
 
@@ -70,6 +109,15 @@ cd frontend-placeholder && npm run dev
 - **Единый формат ошибок**: `{"message": "текст ошибки"}` с корректными HTTP-статусами
 - **Структура исключений**:
 
+```
+
+StorageException (базовое)
+├── InvalidPathException # 400
+├── ResourceNotFoundException # 404
+├── ResourceAlreadyExistsException # 409
+└── StorageOperationException # 500
+
+````
 ```
 
 StorageException (базовое)
@@ -125,9 +173,9 @@ StorageException (базовое)
 
 - **Логирование** — незаменимо при отладке, особенно в связке с авто-тестами
 - **Checked & Unchecked** exceptions:
-  > Checked (extends Exception) — нужно объявлять в throws, подходит для recoverable ошибок.
-  > Unchecked (extends RuntimeException) — можно не объявлять
-  > Лучше разобрался, но код местами грязный
+> Checked (extends Exception) — нужно объявлять в throws, подходит для recoverable ошибок.
+> Unchecked (extends RuntimeException) — можно не объявлять
+> Лучше разобрался, но код местами грязный
 - **Валидация путей** — унифицирована, добавлена проверка ожидаемого типа ресурса
 - **Тесты** — ручные проходят, автоматические требуют изоляции (Testcontainers или H2 в следующий раз)
 
@@ -139,16 +187,16 @@ StorageException (базовое)
 ```json
 // fixme: PATCH `resourse/move`
 {
-  "from": "test-move-files/source/test-file.txt",
-  "to": "renamed-file.txt"
+"from": "test-move-files/source/test-file.txt",
+"to": "renamed-file.txt"
 }
-```
+````
 
 3. Доработка ресурсов - использовать поля "lastModified", "downloadUrl", "contentType"
 4. Фронтенд: отладить плавающего бага с отсутствием реакции на загрузку файлов при повторной загрузке (пока лечится перезагрузкой страницы)
 5. Фронтенд: после унификации без ведущего слеша перестали выделяться файлы и папки в корне
 
-- Опционально: переписать бэк на nodejs/laravel, переписать фронт на Vue, использовать `/health` эндпоинт и добавить maintence страницы при недоступности сервисов
+- Опционально: переписать бэк на nodejs/laravel для сравнения производительности, переписать фронт на Vue, использовать `/health` эндпоинт и добавить maintence страницы при недоступности сервисов
 
 ## Предыдущий статус (этап 2)
 

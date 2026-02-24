@@ -5,8 +5,8 @@ spring:
   # Настройки PostgreSQL
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/appdb}
-    username: ${SPRING_DATASOURCE_USERNAME:appuser}
-    password: ${SPRING_DATASOURCE_PASSWORD:secretpassword}
+    username: ${SPRING_DATASOURCE_USERNAME:db_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgress_pass}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -43,8 +43,8 @@ spring:
     url: ${MINIO_ENDPOINT:http://localhost}
     port: ${MINIO_PORT:9000}
     bucket: ${MINIO_DEFAULT_BUCKETS:user-uploads}
-    access-key: ${MINIO_ACCESS_KEY:minioadmin}
-    secret-key: ${MINIO_SECRET_KEY:minioadmin}
+    access-key: ${MINIO_ACCESS_KEY:minio_admin}
+    secret-key: ${MINIO_SECRET_KEY:minio_pass}
 
   security:
     enabled: false
