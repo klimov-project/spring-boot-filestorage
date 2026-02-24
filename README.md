@@ -45,7 +45,7 @@ cd frontend-placeholder && npm run dev
 2. **Настроить переменные окружения:**
 
    ```bash
-   cp .env.example .env && cp ./frontend-placeholder/.env.example ./frontend-placeholder/.env
+   cp .env.example .env && cp ./frontend-placeholder/.env.example ./frontend-placeholder/.env && cp docker-compose.prod.yml docker-compose.yml
    ```
 
 3. **Запустить сборку и контейнеры:**
