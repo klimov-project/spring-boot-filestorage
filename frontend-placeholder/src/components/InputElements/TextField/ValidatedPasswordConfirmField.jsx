@@ -1,45 +1,44 @@
-import ValidatedTextField from "./ValidatedTextField.jsx";
-import * as React from "react";
-import {useEffect} from "react";
-
+import ValidatedTextField from './ValidatedTextField.jsx';
+import * as React from 'react';
+import { useEffect } from 'react';
 
 export default function ValidatedPasswordConfirmField({
-                                                          confirmPassword, setConfirmPassword,
-                                                          confirmPasswordError, setConfirmPasswordError,
-                                                          originalPassword,
-                                                          label="Подтверждение пароля"
-                                                      }) {
+  confirmPassword,
+  setConfirmPassword,
+  confirmPasswordError,
+  setConfirmPasswordError,
+  originalPassword,
+  label = 'Подтверждение пароля',
+}) {
+  const validatePasswordConfirm = (value) => {
+    let isValid = true;
+    let errMessage = '';
 
-    const validatePasswordConfirm = (value) => {
-        let isValid = true;
-        let errMessage = '';
-
-        if (value !== originalPassword) {
-            errMessage = 'Пароли не совпадают!';
-            isValid = false;
-        }
-
-        if (isValid) {
-            setConfirmPasswordError('');
-        } else {
-            setConfirmPasswordError(errMessage);
-        }
-        setConfirmPassword(value);
-
+    if (value !== originalPassword) {
+      errMessage = 'Пароли не совпадают!';
+      isValid = false;
     }
 
-    useEffect(() => {
-        validatePasswordConfirm(confirmPassword);
-    }, [originalPassword]);
+    if (isValid) {
+      setConfirmPasswordError('');
+    } else {
+      setConfirmPasswordError(errMessage);
+    }
+    setConfirmPassword(value);
+  };
 
-    return (
-        <ValidatedTextField
-            id="password_confirm"
-            label={label}
-            type="password_confirm"
-            value={confirmPassword}
-            onChange={(e) => validatePasswordConfirm(e.target.value)}
-            helperText={confirmPasswordError}
-        />
-    )
+  useEffect(() => {
+    validatePasswordConfirm(confirmPassword);
+  }, [originalPassword]);
+
+  return (
+    <ValidatedTextField
+      id="password_confirm"
+      label={label}
+      type="password_confirm"
+      value={confirmPassword}
+      onChange={(e) => validatePasswordConfirm(e.target.value)}
+      helperText={confirmPasswordError}
+    />
+  );
 }

@@ -27,7 +27,6 @@ export const ObjectsContainer = () => {
     setSelectedIds,
     setSelectionMode,
     bufferIds,
-    startCopying,
     startCutting,
   } = useStorageSelection();
   const { deleteObject, pasteObjects } = useStorageOperations();
@@ -54,7 +53,6 @@ export const ObjectsContainer = () => {
       top: 0,
       behavior: 'smooth',
     });
-    // setTimeout(() => setPreviewModal(false), 200)
   };
 
   const containerRef = useRef(null);

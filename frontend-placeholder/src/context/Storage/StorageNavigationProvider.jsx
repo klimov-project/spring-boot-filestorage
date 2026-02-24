@@ -16,11 +16,20 @@ export const StorageNavigationProvider = ({ children }) => {
   const { setSelectedIds } = useStorageSelection();
 
   const [folderContentLoading, setFolderContentLoading] = useState(false);
-  const [folderPath, setFolderPath] = React.useState(['']);
+  const [folderPath, setFolderPath] = useState(['']);
   const currentFolder = folderPath[folderPath.length - 1];
   const isRootFolder = currentFolder === '';
   const currentPath = folderPath.join('');
   const currentPathRef = useRef();
+
+  const [folderContent, setFolderContent] = useState([]);
+  const [searchedContent, setSearchedContent] = useState([]);
+  const [searchName, setSearchName] = useState('');
+
+  const { showWarn, showError } = useNotification();
+  const navigate = useNavigate();
+
+  const isSearchMode = searchedContent.length > 0;
 
   const goToPrevFolder = async () => {
     setFolderContentLoading(true);
@@ -44,8 +53,6 @@ export const StorageNavigationProvider = ({ children }) => {
     setFolderContentLoading(false);
   };
 
-  const [folderContent, setFolderContent] = useState([]);
-
   const createSpoofObject = (object) => {
     setFolderContent([...folderContent, object]);
   };
@@ -53,10 +60,6 @@ export const StorageNavigationProvider = ({ children }) => {
   const getObjectByPath = (path) => {
     return folderContent.find((object) => object.path === path);
   };
-
-  const { showWarn, showError } = useNotification();
-
-  const navigate = useNavigate();
 
   const updateCurrentFolderContent = async (path = ['']) => {
     setSelectedIds([]);
@@ -77,7 +80,7 @@ export const StorageNavigationProvider = ({ children }) => {
           break;
         default:
           showError('Не удалось создать папку. Попробуйте позже');
-          console.log('Unknown error occurred! ');
+          console.log('Unknown error occurred! ', error);
       }
     }
   };
@@ -86,7 +89,7 @@ export const StorageNavigationProvider = ({ children }) => {
     setSelectedIds([]);
     setFolderContentLoading(true);
     try {
-      let content = await sendGetFolderContent(url); //todo add check for 404
+      let content = await sendGetFolderContent(url);
       setFolderContent(content);
 
       const base = import.meta.env.VITE_BASE;
@@ -101,36 +104,19 @@ export const StorageNavigationProvider = ({ children }) => {
           break;
         default:
           showError('Не удалось создать папку. Попробуйте позже');
-          console.log('Unknown error occurred! ');
+          console.log('Unknown error occurred! ', error);
       }
-    }
-
-    if (url === '') {
+    } finally {
+      if (url === '') {
+        setFolderPath(['']);
+      } else {
+        const parts = url.split('/').filter(Boolean);
+        const result = parts.map((part) => `${part}/`);
+        setFolderPath(['', ...result]);
+      }
       setFolderContentLoading(false);
-      setFolderPath(['']);
-      return;
     }
-    const parts = url.split('/').filter(Boolean); // Убираем пустые элементы
-    const result = parts.map((part) => `${part}/`);
-
-    setFolderPath(['', ...result]);
-    setFolderContentLoading(false);
   };
-
-  const [searchedContent, setSearchedContent] = React.useState([]);
-
-  const isSearchMode = searchedContent.length > 0;
-
-  const [searchName, setSearchName] = useState('');
-
-  // const isPasteAllowed = () => {
-  //     const folderPathes = folderContent.map(obj => obj.path);
-  //     let filtered = bufferIds.filter(path => folderPathes.includes(path));
-  //     console.log("filt")
-  //
-  //     console.log(filtered);
-  //     return filtered.length === 0;
-  // }
 
   return (
     <CloudStorageContext.Provider

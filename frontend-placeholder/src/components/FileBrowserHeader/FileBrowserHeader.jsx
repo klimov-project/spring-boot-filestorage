@@ -12,7 +12,7 @@ import { CustomBread } from './Breadcrumbs/CustomBread.jsx';
 import { useStorageNavigation } from '../../context/Storage/StorageNavigationProvider.jsx';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FileMenu } from './FileMenu/FileMenu.jsx';
 import CloseIcon from '@mui/icons-material/Close';
 import ContentPasteGoIcon from '@mui/icons-material/ContentPasteGo';
