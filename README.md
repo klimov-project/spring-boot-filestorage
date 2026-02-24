@@ -54,12 +54,6 @@ cd frontend-placeholder && npm run dev
    docker-compose up -d --build
    ```
 
-4. **Проверить работу:**
-
-   ```bash
-   docker ps
-   ```
-
    Приложение будет доступно по адресу: `http://ваш-сервер`
 
 ## Ключевые достижения текущего этапа

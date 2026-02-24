@@ -5,20 +5,20 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   base: process.env.VITE_BASE || '/',
   plugins: [react()],
-  server: {
-    host: true,
-    port: 80,
-    allowedHosts: 'mydev.local',
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-        secure: false,
-        headers: {
-          Origin: 'http://localhost:8080',
-        },
-      },
-    },
-  },
+  // server: {
+  //   host: true,
+  //   port: 80,
+  //   allowedHosts: 'mydev.local',
+  //   proxy: {
+  //     '/api': {
+  //       target: 'http://localhost:8080',
+  //       changeOrigin: true,
+  //       secure: false,
+  //       headers: {
+  //         Origin: 'http://localhost:8080',
+  //       },
+  //     },
+  //   },
+  // },
 
 })
