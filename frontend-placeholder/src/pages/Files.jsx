@@ -1,8 +1,7 @@
 import { Box, CircularProgress, Container } from '@mui/material';
 import { useStorageNavigation } from '../context/Storage/StorageNavigationProvider.jsx';
-import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { ObjectsContainer } from '../components/FileBrowser/ObjectsContainer.jsx';
 import { FileBrowserHeader } from '../components/FileBrowserHeader/FileBrowserHeader.jsx';
 import { FileTasksModal } from '../modals/FileTasksModal/FileTasksModal.jsx';
@@ -29,37 +28,35 @@ export default function Files() {
   const {
     folderContentLoading,
     loadFolder,
-    folderContent,
-    isRootFolder,
     isSearchMode,
   } = useStorageNavigation();
   const location = useLocation();
+  const lastLoadedPathRef = useRef('');
+  const isInitialMountRef = useRef(true);
 
   const loadFolderFromPath = () => {
     let extracted = location.pathname.replace(/^\/files/, '');
     extracted = extracted.replace('/', '');
     let decodedUrl = decodeURIComponent(extracted);
- 
-    console.log('isLoading?', folderContentLoading);
+
+    console.log(
+      '📂 Загружаем путь:',
+      decodedUrl,
+      'предыдущий:',
+      lastLoadedPathRef.current,
+    );
+    lastLoadedPathRef.current = decodedUrl;
+    isInitialMountRef.current = false;
     loadFolder(decodedUrl);
   };
 
   useEffect(() => {
-    loadFolderFromPath();
-  }, []);
-
-  useEffect(() => {
-    loadFolderFromPath();
-  }, [location.pathname]);
-
-  const navigate = useNavigate();
-  useEffect(() => {
-    // if ((!folderContent || folderContent.length === 0) && !folderContentLoading && !isRootFolder) {
-    //     setTimeout(() =>
-    //             navigate(("/files/"))
-    //         , 500)
-    // }
-  }, [folderContent]);
+    if (
+      isInitialMountRef.current && lastLoadedPathRef.current !== location.pathname
+    ) {
+      loadFolderFromPath();
+    }
+  }, [location.pathname]); // Только одна зависимость
 
   const dragRef = useRef();
 
