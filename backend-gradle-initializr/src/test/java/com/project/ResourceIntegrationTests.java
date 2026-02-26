@@ -94,7 +94,7 @@ public class ResourceIntegrationTests {
                 .param("path", dirPath))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.name").value(dirPath))
-                .andExpect(jsonPath("$.path").value("/"))
+                .andExpect(jsonPath("$.path").value("")) // директория в корне
                 .andExpect(jsonPath("$.type").value("DIRECTORY"));
 
         // Проверяем, что директория существует
@@ -102,7 +102,7 @@ public class ResourceIntegrationTests {
                 .param("path", dirPath))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value(dirPath))
-                .andExpect(jsonPath("$.path").value("/"))
+                .andExpect(jsonPath("$.path").value("")) // ресурс в корне
                 .andExpect(jsonPath("$.type").value("DIRECTORY"));
     }
 
