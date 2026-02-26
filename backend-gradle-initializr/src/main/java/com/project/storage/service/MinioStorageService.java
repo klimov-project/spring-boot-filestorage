@@ -202,7 +202,7 @@ public class MinioStorageService implements StorageService {
 
     private String getParentPath(String path) {
         if (path == null || path.isEmpty() || "/".equals(path)) {
-            return "/";
+            return "";
         }
 
         String cleanPath = path.endsWith("/")
@@ -211,7 +211,7 @@ public class MinioStorageService implements StorageService {
 
         int lastSlash = cleanPath.lastIndexOf('/');
         if (lastSlash == -1) {
-            return "/";
+            return "";
         }
 
         return cleanPath.substring(0, lastSlash + 1);
