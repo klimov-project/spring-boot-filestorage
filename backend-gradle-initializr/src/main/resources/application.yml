@@ -5,8 +5,8 @@ spring:
   # Настройки PostgreSQL
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/appdb}
-    username: ${SPRING_DATASOURCE_USERNAME:db_user}
-    password: ${SPRING_DATASOURCE_PASSWORD:postgress_pass}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -26,8 +26,8 @@ spring:
   # Настройки Redis (для сессий)
   data:
     redis:
-      host: ${SPRING_REDIS_HOST:localhost}
-      port: ${SPRING_REDIS_PORT:6379}
+      host: ${SPRING_REDIS_HOST}
+      port: ${SPRING_REDIS_PORT}
       timeout: 2000ms
 
   # Настройки сессий
@@ -40,11 +40,11 @@ spring:
 
   # Настройки MinIO
   minio:
-    url: ${MINIO_ENDPOINT:http://localhost}
-    port: ${MINIO_PORT:9000}
-    bucket: ${MINIO_DEFAULT_BUCKETS:user-uploads}
-    access-key: ${MINIO_ACCESS_KEY:minio_admin}
-    secret-key: ${MINIO_SECRET_KEY:minio_pass}
+    url: ${MINIO_ENDPOINT}
+    port: ${MINIO_PORT}
+    bucket: ${MINIO_DEFAULT_BUCKETS}
+    access-key: ${MINIO_ACCESS_KEY}
+    secret-key: ${MINIO_SECRET_KEY}
 
   security:
     enabled: false
