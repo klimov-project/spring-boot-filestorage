@@ -24,10 +24,10 @@ public class ResourceController {
 
     private static final Logger logger = LoggerFactory.getLogger(ResourceController.class);
 
-    private final StorageService StorageService;
+    private final StorageService storageService;
 
-    public ResourceController(StorageService StorageService) {
-        this.StorageService = StorageService;
+    public ResourceController(StorageService storageService) {
+        this.storageService = storageService;
     }
 
     /**
@@ -40,7 +40,7 @@ public class ResourceController {
 
         logger.info("User {} requested /resource with path: {}", user.getId(), path);
 
-        ResourceInfo info = StorageService.getResourceInfo(user.getId(), path);
+        ResourceInfo info = storageService.getResourceInfo(user.getId(), path);
 
         logger.info("Resource info retrieved successfully for user {}: {}",
                 user.getId(), path);
@@ -57,7 +57,7 @@ public class ResourceController {
 
         logger.info("User {} requested DELETE /resource with path: {}", user.getId(), path);
 
-        StorageService.deleteResource(user.getId(), path);
+        storageService.deleteResource(user.getId(), path);
 
         logger.info("User {} successfully deleted resource: {}",
                 user.getId(), path);
@@ -75,7 +75,7 @@ public class ResourceController {
         logger.info("User {} requested PATCH /resource/move from: {} to: {}",
                 user.getId(), request.getFrom(), request.getTo());
 
-        ResourceInfo movedResource = StorageService.moveResource(user.getId(), request.getFrom(), request.getTo());
+        ResourceInfo movedResource = storageService.moveResource(user.getId(), request.getFrom(), request.getTo());
 
         logger.info("User {} successfully moved resource from {} to {}",
                 user.getId(), request.getFrom(), request.getTo());
@@ -92,7 +92,7 @@ public class ResourceController {
 
         logger.info("User {} requested GET /resource/search with query: {}",
                 user.getId(), query);
-        List<ResourceInfo> results = StorageService.searchResources(user.getId(), query);
+        List<ResourceInfo> results = storageService.searchResources(user.getId(), query);
 
         logger.info("User {} found {} results for query: {}",
                 user.getId(), results.size(), query);
@@ -112,7 +112,7 @@ public class ResourceController {
         logger.info("User {} requested POST /resource to path: {} with {} files",
                 user.getId(), path, files != null ? files.length : 0);
 
-        List<ResourceInfo> uploaded = StorageService.uploadFiles(user.getId(), path, files);
+        List<ResourceInfo> uploaded = storageService.uploadFiles(user.getId(), path, files);
 
         logger.info("User {} successfully uploaded {} files to path: {}",
                 user.getId(), uploaded.size(), path);
@@ -129,7 +129,7 @@ public class ResourceController {
             @RequestParam String path) {
 
         logger.info("User {} requested GET /directory with path: {}", user.getId(), path);
-        List<ResourceInfo> contents = StorageService.getDirectoryContents(user.getId(), path);
+        List<ResourceInfo> contents = storageService.getDirectoryContents(user.getId(), path);
 
         logger.info("User {} retrieved {} items from directory: {}",
                 user.getId(), contents.size(), path);
@@ -146,7 +146,7 @@ public class ResourceController {
 
         logger.info("User {} requested POST /directory with path: {}", user.getId(), path);
 
-        ResourceInfo created = StorageService.createDirectory(user.getId(), path);
+        ResourceInfo created = storageService.createDirectory(user.getId(), path);
 
         logger.info("User {} successfully created directory: {}", user.getId(), path);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);

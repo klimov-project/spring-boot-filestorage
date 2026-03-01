@@ -23,17 +23,17 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
-    private final StorageService StorageService;
+    private final StorageService storageService;
 
     public AuthService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager,
-            StorageService StorageService) {
+            StorageService storageService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
-        this.StorageService = StorageService;
+        this.storageService = storageService;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -54,7 +54,7 @@ public class AuthService {
         logger.info("Attempting to create root user folder for user ID: {}", user.getId());
 
         try {
-            StorageService.createUserDirectory(user.getId());
+            storageService.createUserDirectory(user.getId());
         } catch (Exception e) {
             logger.error("Failed to create user directory in MinIO for user {}: {}",
                     user.getId(), e.getMessage(), e);
